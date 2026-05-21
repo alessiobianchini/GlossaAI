@@ -13,6 +13,7 @@ jobs:
     name: Build & Release Standalone
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -40,8 +41,16 @@ jobs:
       - name: Publish standalone application
         run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:ReadyToRun=true -o ./publish/${{ matrix.rid }}
 
-      - name: Setup FFmpeg
+      - name: Setup FFmpeg (Windows/Linux)
+        if: matrix.os != 'macos-latest'
         uses: FedericoCarboni/setup-ffmpeg@v3
+
+      - name: Setup FFmpeg (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          curl -L https://evermeet.cx/ffmpeg/get/release/zip -o ffmpeg.zip
+          unzip ffmpeg.zip
+          chmod +x ffmpeg
 
       - name: Copy FFmpeg to publish directory (Windows)
         if: matrix.os == 'windows-latest'
@@ -53,8 +62,7 @@ jobs:
       - name: Copy FFmpeg to publish directory (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          FFMPEG_PATH=$(which ffmpeg)
-          cp $FFMPEG_PATH ./publish/osx-x64/
+          cp ffmpeg ./publish/osx-x64/
 
       - name: Copy FFmpeg to publish directory (Linux)
         if: matrix.os == 'ubuntu-latest'

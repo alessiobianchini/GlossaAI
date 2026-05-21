@@ -47,10 +47,7 @@ jobs:
 
       - name: Setup FFmpeg (macOS)
         if: matrix.os == 'macos-latest'
-        run: |
-          curl -L https://evermeet.cx/ffmpeg/get/release/zip -o ffmpeg.zip
-          unzip ffmpeg.zip
-          chmod +x ffmpeg
+        run: brew install ffmpeg
 
       - name: Copy FFmpeg to publish directory (Windows)
         if: matrix.os == 'windows-latest'
@@ -62,7 +59,8 @@ jobs:
       - name: Copy FFmpeg to publish directory (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          cp ffmpeg ./publish/osx-x64/
+          FFMPEG_PATH=$(which ffmpeg)
+          cp $FFMPEG_PATH ./publish/osx-x64/
 
       - name: Copy FFmpeg to publish directory (Linux)
         if: matrix.os == 'ubuntu-latest'

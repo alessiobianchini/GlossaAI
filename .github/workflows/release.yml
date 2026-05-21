@@ -40,6 +40,28 @@ jobs:
       - name: Publish standalone application
         run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:ReadyToRun=true -o ./publish/${{ matrix.rid }}
 
+      - name: Setup FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
+
+      - name: Copy FFmpeg to publish directory (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ffmpegPath = (Get-Command ffmpeg).Source
+          Copy-Item -Path $ffmpegPath -Destination ./publish/win-x64/
+
+      - name: Copy FFmpeg to publish directory (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          FFMPEG_PATH=$(which ffmpeg)
+          cp $FFMPEG_PATH ./publish/osx-x64/
+
+      - name: Copy FFmpeg to publish directory (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          FFMPEG_PATH=$(which ffmpeg)
+          cp $FFMPEG_PATH ./publish/linux-x64/
+
       # Windows installer packaging
       - name: Install Inno Setup
         if: matrix.os == 'windows-latest'
@@ -109,6 +131,7 @@ jobs:
             
             echo "--- Applying executable permissions ---"
             chmod +x GlossaAI.app/Contents/MacOS/GlossaAI.Desktop
+            chmod +x GlossaAI.app/Contents/MacOS/ffmpeg
             
             echo "--- Copying Info.plist ---"
             cp src/GlossaAI.Desktop/Info.plist GlossaAI.app/Contents/Info.plist

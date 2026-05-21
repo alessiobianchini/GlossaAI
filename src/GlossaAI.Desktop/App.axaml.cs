@@ -84,9 +84,20 @@ public partial class App : Application
 
     public void OnShowApplicationClick(object? sender, EventArgs e)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
+
+        if (desktop.MainWindow == null)
         {
-            desktop.MainWindow.Show();
+            var mainViewModel = Services?.GetService(typeof(MainViewModel)) as MainViewModel;
+            if (mainViewModel != null)
+            {
+                desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
+            }
+        }
+
+        desktop.MainWindow?.Show();
+        if (desktop.MainWindow != null)
+        {
             desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
             desktop.MainWindow.Activate();
         }

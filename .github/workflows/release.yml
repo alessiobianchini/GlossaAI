@@ -62,17 +62,17 @@ jobs:
           PrivilegesRequired=admin
           
           [Files]
-          Source: "publish\win-x64\GlossaAI.Desktop.exe"; DestDir: "{app}"; DestName: "GlossaAI.exe"; Flags: ignoreversion
+          Source: "publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
           
           [Icons]
-          Name: "{group}\GlossaAI"; Filename: "{app}\GlossaAI.exe"
-          Name: "{autodesktop}\GlossaAI"; Filename: "{app}\GlossaAI.exe"; Tasks: desktopicon
+          Name: "{group}\GlossaAI"; Filename: "{app}\GlossaAI.Desktop.exe"
+          Name: "{autodesktop}\GlossaAI"; Filename: "{app}\GlossaAI.Desktop.exe"; Tasks: desktopicon
           
           [Tasks]
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
           
           [Run]
-          Filename: "{app}\GlossaAI.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; Flags: nowait postinstall skipifsilent
+          Filename: "{app}\GlossaAI.Desktop.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; Flags: nowait postinstall skipifsilent
           "@
           Set-Content -Path setup.iss -Value $issContent
 
@@ -87,8 +87,8 @@ jobs:
         run: |
           mkdir -p GlossaAI.app/Contents/MacOS
           mkdir -p GlossaAI.app/Contents/Resources
-          cp ./publish/osx-x64/GlossaAI.Desktop GlossaAI.app/Contents/MacOS/GlossaAI
-          chmod +x GlossaAI.app/Contents/MacOS/GlossaAI
+          cp -R ./publish/osx-x64/* GlossaAI.app/Contents/MacOS/
+          chmod +x GlossaAI.app/Contents/MacOS/GlossaAI.Desktop
           cat <<EOF > GlossaAI.app/Contents/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -97,7 +97,7 @@ jobs:
               <key>CFBundleDevelopmentRegion</key>
               <string>English</string>
               <key>CFBundleExecutable</key>
-              <string>GlossaAI</string>
+              <string>GlossaAI.Desktop</string>
               <key>CFBundleIdentifier</key>
               <string>com.alessiobianchini.glossaai</string>
               <key>CFBundleInfoDictionaryVersion</key>

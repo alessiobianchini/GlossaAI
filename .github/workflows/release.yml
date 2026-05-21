@@ -85,12 +85,53 @@ jobs:
       - name: Create App Bundle & DMG (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          mkdir -p GlossaAI.app/Contents/MacOS
-          mkdir -p GlossaAI.app/Contents/Resources
-          cp -R ./publish/osx-x64/. GlossaAI.app/Contents/MacOS/
-          chmod +x GlossaAI.app/Contents/MacOS/GlossaAI.Desktop
-          cp src/GlossaAI.Desktop/Info.plist GlossaAI.app/Contents/Info.plist
-          hdiutil create -volname "GlossaAI Installer" -srcfolder GlossaAI.app -ov -format UDZO GlossaAI-osx-x64.dmg
+          echo "=== Starting macOS packaging debug ===" > build.log
+          {
+            echo "--- System Info ---"
+            uname -a
+            sw_vers
+            
+            echo "--- Directory contents of publish/osx-x64 ---"
+            ls -la ./publish/osx-x64
+            
+            echo "--- Creating App Bundle structure ---"
+            mkdir -p GlossaAI.app/Contents/MacOS
+            mkdir -p GlossaAI.app/Contents/Resources
+            
+            echo "--- Copying published files ---"
+            cp -R ./publish/osx-x64/. GlossaAI.app/Contents/MacOS/
+            
+            echo "--- Listing files in GlossaAI.app/Contents/MacOS ---"
+            ls -la GlossaAI.app/Contents/MacOS
+            
+            echo "--- Finding GlossaAI executable files ---"
+            find GlossaAI.app -name "GlossaAI*"
+            
+            echo "--- Applying executable permissions ---"
+            chmod +x GlossaAI.app/Contents/MacOS/GlossaAI.Desktop
+            
+            echo "--- Copying Info.plist ---"
+            cp src/GlossaAI.Desktop/Info.plist GlossaAI.app/Contents/Info.plist
+            
+            echo "--- Verifying Info.plist exists ---"
+            ls -l GlossaAI.app/Contents/Info.plist
+            
+            echo "--- Running hdiutil create ---"
+            sync
+            hdiutil create -volname "GlossaAI Installer" -srcfolder GlossaAI.app -ov -format UDZO GlossaAI-osx-x64.dmg
+          } >> build.log 2>&1 || {
+            echo "=== BUILD FAILED ===" >> build.log
+            cat build.log
+            git config --global user.name "GitHub Actions"
+            git config --global user.email "actions@github.com"
+            git checkout -b debug-macos-logs
+            git add build.log
+            git commit -m "chore: debug macos build failure"
+            git push -f origin debug-macos-logs
+            exit 1
+          }
+          echo "=== BUILD SUCCEEDED ===" >> build.log
+          cat build.log
 
 
       # Linux archive packaging

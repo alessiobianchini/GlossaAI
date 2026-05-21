@@ -1,0 +1,132 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Release Standalone
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            archive: GlossaAI-Setup-win-x64.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            archive: GlossaAI-linux-x64.tar.gz
+          - os: macos-latest
+            rid: osx-x64
+            archive: GlossaAI-osx-x64.dmg
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish standalone application
+        run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:ReadyToRun=true -o ./publish/${{ matrix.rid }}
+
+      # Windows installer packaging
+      - name: Install Inno Setup
+        if: matrix.os == 'windows-latest'
+        run: choco install innosetup -y
+
+      - name: Create Inno Setup Script
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $issContent = @"
+          [Setup]
+          AppName=GlossaAI
+          AppVersion=1.0.0
+          DefaultDirName={autopf}\GlossaAI
+          DefaultGroupName=GlossaAI
+          OutputDir=.
+          OutputBaseFilename=GlossaAI-Setup-win-x64
+          Compression=lzma
+          SolidCompression=yes
+          PrivilegesRequired=admin
+          
+          [Files]
+          Source: "publish\win-x64\GlossaAI.Desktop.exe"; DestDir: "{app}"; DestName: "GlossaAI.exe"; Flags: ignoreversion
+          
+          [Icons]
+          Name: "{group}\GlossaAI"; Filename: "{app}\GlossaAI.exe"
+          Name: "{autodesktop}\GlossaAI"; Filename: "{app}\GlossaAI.exe"; Tasks: desktopicon
+          
+          [Tasks]
+          Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+          
+          [Run]
+          Filename: "{app}\GlossaAI.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; Flags: nowait postinstall skipifsilent
+          "@
+          Set-Content -Path setup.iss -Value $issContent
+
+      - name: Build Installer (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
+
+      # macOS bundle & DMG packaging
+      - name: Create App Bundle & DMG (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p GlossaAI.app/Contents/MacOS
+          mkdir -p GlossaAI.app/Contents/Resources
+          cp ./publish/osx-x64/GlossaAI.Desktop GlossaAI.app/Contents/MacOS/GlossaAI
+          chmod +x GlossaAI.app/Contents/MacOS/GlossaAI
+          cat <<EOF > GlossaAI.app/Contents/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>English</string>
+              <key>CFBundleExecutable</key>
+              <string>GlossaAI</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.alessiobianchini.glossaai</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>GlossaAI</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0.0</string>
+              <key>CFBundleSignature</key>
+              <string>????</string>
+              <key>CFBundleVersion</key>
+              <string>1.0.0</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.12</string>
+              <key>NSPrincipalClass</key>
+              <string>NSApplication</string>
+          </dict>
+          </plist>
+          EOF
+          hdiutil create -volname "GlossaAI Installer" -srcfolder GlossaAI.app -ov -format UDZO GlossaAI-osx-x64.dmg
+
+      # Linux archive packaging
+      - name: Compress Build Artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: tar -czf GlossaAI-linux-x64.tar.gz -C ./publish/linux-x64 .
+
+      - name: Deploy Release Artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.archive }}

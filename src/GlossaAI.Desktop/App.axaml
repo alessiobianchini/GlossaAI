@@ -1,0 +1,64 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="GlossaAI.Desktop.App"
+             xmlns:local="using:GlossaAI.Desktop"
+             RequestedThemeVariant="Dark">
+             <!-- Set Dark theme as default for sleek modern aesthetics -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <Color x:Key="BackgroundDefault">#1E222B</Color>
+        <Color x:Key="BackgroundCard">#252B36</Color>
+        <Color x:Key="AccentGreen">#0F9F66</Color>
+        <Color x:Key="AccentBlue">#1C3D5A</Color>
+        <Color x:Key="TextPrimary">#FFFFFF</Color>
+        <Color x:Key="TextSecondary">#8A94A6</Color>
+        <Color x:Key="AccentRed">#E53E3E</Color>
+
+        <SolidColorBrush x:Key="BackgroundDefaultBrush" Color="{StaticResource BackgroundDefault}"/>
+        <SolidColorBrush x:Key="BackgroundCardBrush" Color="{StaticResource BackgroundCard}"/>
+        <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreen}"/>
+        <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
+        <SolidColorBrush x:Key="AccentRedBrush" Color="{StaticResource AccentRed}"/>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontFamily" Value="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"/>
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontFamily" Value="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"/>
+        </Style>
+        <Style Selector="Border">
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="Window">
+            <Setter Property="FontFamily" Value="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"/>
+        </Style>
+    </Application.Styles>
+
+    <!-- Configure System Tray Icons for Windows, macOS, Linux -->
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="GlossaAI Meeting Assistant">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="Mostra Dashboard" Click="OnShowApplicationClick"/>
+                        <NativeMenuItem Header="Avvia Registrazione" Click="OnStartRecordingClick"/>
+                        <NativeMenuItem Header="Ferma Registrazione" Click="OnStopRecordingClick"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="Esci" Click="OnExitClick"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+</Application>

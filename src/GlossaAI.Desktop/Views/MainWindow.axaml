@@ -1,0 +1,461 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GlossaAI.Desktop.ViewModels"
+        xmlns:models="using:GlossaAI.Core.Domain.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="700"
+        WindowStartupLocation="CenterScreen"
+        x:Class="GlossaAI.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="GlossaAI - Meeting Assistant"
+        TransparencyLevelHint="Mica"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="40"
+        SizeToContent="WidthAndHeight"
+        CanResize="True">
+
+    <Window.Styles>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource AccentGreenBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="18,11"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.primary /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#12B876"/>
+        </Style>
+        <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252B36"/>
+            <Setter Property="Foreground" Value="#8A94A6"/>
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{StaticResource AccentRedBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="18,11"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.danger /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#F55353"/>
+        </Style>
+        <Style Selector="Button.danger:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252B36"/>
+            <Setter Property="Foreground" Value="#8A94A6"/>
+        </Style>
+
+        <Style Selector="Button.neutral">
+            <Setter Property="Background" Value="{StaticResource AccentBlueBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="18,11"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.neutral /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.neutral:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2A5C84"/>
+        </Style>
+        <Style Selector="Button.neutral:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252B36"/>
+            <Setter Property="Foreground" Value="#8A94A6"/>
+        </Style>
+
+        <Style Selector="Button.ghost">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="FontSize" Value="12.5"/>
+        </Style>
+        <Style Selector="Button.ghost /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource AccentBlueBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Compact action buttons inside the toolbar -->
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="{StaticResource AccentBlueBrush}"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.action /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.action:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2A5C84"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.action:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1E222B"/>
+            <Setter Property="Foreground" Value="#334155"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial BackgroundSource="Digger" TintColor="{StaticResource BackgroundDefault}" TintOpacity="0.87" MaterialOpacity="0.78"/>
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+
+        <Grid RowDefinitions="Auto, Auto, *" Margin="20,40,20,20">
+
+            <!-- ── TOP BAR ── -->
+            <Grid Grid.Row="0" Margin="0,0,0,14">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Path Data="M 2 12 L 6 12 L 8 4 L 12 20 L 14 10 L 16 12 L 20 12" Stroke="{StaticResource AccentGreenBrush}" StrokeThickness="2" Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center"/>
+                    <TextBlock Text="GlossaAI" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    <Border Width="1" Height="14" Background="#334155" VerticalAlignment="Center" Margin="4,0"/>
+                    <TextBlock Text="DESKTOP AUDIO COORDINATOR" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}" LetterSpacing="1.2" VerticalAlignment="Center"/>
+                </StackPanel>
+
+
+                <!-- AI Settings flyout — top right -->
+                <Button Classes="ghost" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <ScrollViewer MaxHeight="460" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Width="330" Spacing="14" Margin="4">
+                                    <TextBlock Text="AI PROVIDER SETTINGS" FontSize="10" FontWeight="Bold"
+                                               Foreground="#94A3B8" LetterSpacing="0.9"/>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Provider" FontSize="11" Foreground="#64748B"/>
+                                        <ComboBox ItemsSource="{Binding Settings.AvailableProviders}"
+                                                  SelectedItem="{Binding Settings.SelectedProvider}"
+                                                  HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="API URL" FontSize="11" Foreground="#64748B"/>
+                                        <TextBox Text="{Binding Settings.ApiUrl}"
+                                                 PlaceholderText="http://local-server:11434"
+                                                 HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="API Key" FontSize="11" Foreground="#64748B"/>
+                                        <TextBox Text="{Binding Settings.ApiKey}"
+                                                 PasswordChar="*"
+                                                 PlaceholderText="Not required for Ollama"
+                                                 IsEnabled="{Binding Settings.IsApiKeyRequired}"
+                                                 HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Model" FontSize="11" Foreground="#64748B"/>
+                                        <ComboBox ItemsSource="{Binding Settings.AvailableModels}"
+                                                  SelectedValue="{Binding Settings.SelectedModel}"
+                                                  IsEditable="True"
+                                                  HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <Separator Background="#334155" Height="1" Margin="0,2"/>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Recording Language (STT)" FontSize="11" Foreground="#64748B"/>
+                                        <ComboBox ItemsSource="{Binding Settings.AvailableLangs}"
+                                                  SelectedItem="{Binding Settings.RecLang}"
+                                                  HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate DataType="models:AppLang">
+                                                    <TextBlock Text="{Binding Name}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Output Language (LLM recap)" FontSize="11" Foreground="#64748B"/>
+                                        <ComboBox ItemsSource="{Binding Settings.AvailableLangs}"
+                                                  SelectedItem="{Binding Settings.OutLang}"
+                                                  HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate DataType="models:AppLang">
+                                                    <TextBlock Text="{Binding Name}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <Separator Background="#334155" Height="1" Margin="0,2"/>
+
+                                    <!-- Export folder -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Export Folder" FontSize="11" Foreground="#64748B"/>
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBox Grid.Column="0" Text="{Binding Settings.ExportFolderPath}"
+                                                     PlaceholderText="Output directory..."
+                                                     IsReadOnly="True" Margin="0,0,6,0"/>
+                                            <Button Grid.Column="1" Classes="ghost"
+                                                    Command="{Binding Settings.SelectFolderCommand}"
+                                                    Padding="10,7" Content="Browse…"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Flyout>
+                    </Button.Flyout>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="⚙️" FontSize="11" VerticalAlignment="Center"/>
+                        <TextBlock Text="AI Settings" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ── ACTIONS TOOLBAR ── -->
+            <Border Grid.Row="1" Background="{StaticResource BackgroundCardBrush}" BorderBrush="#334155" BorderThickness="1"
+                    CornerRadius="6" Padding="12,8" Margin="0,0,0,14">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="ACTIONS" FontSize="9" FontWeight="Bold" Foreground="#475569"
+                               LetterSpacing="0.9" VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                    <Button Classes="action" Command="{Binding ExportTranscriptionCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <TextBlock Text="📄" VerticalAlignment="Center"/>
+                            <TextBlock Text="Export Script" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="action" Command="{Binding ExportAiRecapCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <TextBlock Text="🗒️" VerticalAlignment="Center"/>
+                            <TextBlock Text="Export Recap" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Width="1" Background="#334155" Margin="4,0"/>
+
+                    <Button Classes="action" Command="{Binding TranslateRecapCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <TextBlock Text="🌐" VerticalAlignment="Center"/>
+                            <TextBlock Text="Translate" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="action" Command="{Binding ExportTranslationCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <TextBlock Text="💾" VerticalAlignment="Center"/>
+                            <TextBlock Text="Export Translation" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ── MAIN BODY ── -->
+            <Grid Grid.Row="2" ColumnDefinitions="280, 20, 580">
+
+                <!-- LEFT: Controls -->
+                <Grid Grid.Column="0" RowDefinitions="Auto, Auto, Auto, Auto">
+
+                    <!-- Status card -->
+                    <Border Grid.Row="0" Background="{StaticResource BackgroundCardBrush}" BorderBrush="#334155" BorderThickness="1"
+                            CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                        <StackPanel Spacing="9">
+                            <TextBlock Text="RECORDER STATUS" FontSize="10" FontWeight="Bold" Foreground="#94A3B8" LetterSpacing="0.8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="9" Height="9" Margin="0,0,9,0" VerticalAlignment="Center"
+                                         Classes.Recording="{Binding IsRecording}">
+                                    <Ellipse.Styles>
+                                        <Style Selector="Ellipse">
+                                            <Setter Property="Fill" Value="#475569"/>
+                                        </Style>
+                                        <Style Selector="Ellipse.Recording">
+                                            <Setter Property="Fill" Value="#EF4444"/>
+                                            <Style.Animations>
+                                                <Animation Duration="0:0:1.5" IterationCount="Infinite">
+                                                    <KeyFrame Cue="0%">  <Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                    <KeyFrame Cue="50%"> <Setter Property="Opacity" Value="0.3"/></KeyFrame>
+                                                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                </Animation>
+                                            </Style.Animations>
+                                        </Style>
+                                    </Ellipse.Styles>
+                                </Ellipse>
+                                <TextBlock Text="{Binding StatusText}" FontSize="12.5" Foreground="#E2E8F0"
+                                           FontWeight="Medium" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <ProgressBar IsIndeterminate="True" Height="3" IsVisible="{Binding IsProcessing}"
+                                         Foreground="#0D9488" Background="#1E293B"/>
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#F87171"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Audio sources + level meters -->
+                    <Border Grid.Row="1" Background="{StaticResource BackgroundCardBrush}" BorderBrush="#334155" BorderThickness="1"
+                            CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                        <StackPanel Spacing="11">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Grid.Column="0" Text="AUDIO SOURCES" FontSize="10" FontWeight="Bold" Foreground="#94A3B8" LetterSpacing="0.8" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="ghost" Command="{Binding RefreshDevicesCommand}"
+                                        Width="24" Height="24" Padding="0" CornerRadius="12" BorderThickness="0"
+                                        ToolTip.Tip="Refresh audio devices" VerticalAlignment="Center">
+                                    <TextBlock Text="🔄" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
+                            </Grid>
+
+                            <!-- Microphone -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Microphone" FontSize="11" Foreground="#64748B"/>
+                                <ComboBox ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}"
+                                          IsEnabled="{Binding !IsRecording}" HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate DataType="models:AudioDevice">
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <ProgressBar Minimum="0" Maximum="100" Value="{Binding MicLevel}"
+                                             Height="6" CornerRadius="3"
+                                             Foreground="#10B981" Background="#1E293B">
+                                    <ProgressBar.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Value" Duration="0:0:0.08"/>
+                                        </Transitions>
+                                    </ProgressBar.Transitions>
+                                </ProgressBar>
+                            </StackPanel>
+
+                            <!-- System Loopback -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="System Loopback" FontSize="11" Foreground="#64748B"/>
+                                <ComboBox ItemsSource="{Binding DesktopSources}" SelectedItem="{Binding SelectedDesktopSource}"
+                                          IsEnabled="{Binding !IsRecording}" HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate DataType="models:AudioDevice">
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <ProgressBar Minimum="0" Maximum="100" Value="{Binding DesktopLevel}"
+                                             Height="6" CornerRadius="3"
+                                             Foreground="#38BDF8" Background="#1E293B">
+                                    <ProgressBar.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Value" Duration="0:0:0.08"/>
+                                        </Transitions>
+                                    </ProgressBar.Transitions>
+                                </ProgressBar>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Recording buttons -->
+                    <StackPanel Grid.Row="2" Spacing="10">
+                        <Button Classes="primary" Command="{Binding StartRecordingCommand}"
+                                IsEnabled="{Binding !IsRecording}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <TextBlock Text="🔴" VerticalAlignment="Center"/>
+                                <TextBlock Text="Start Recording" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="danger" Command="{Binding StopRecordingCommand}"
+                                IsEnabled="{Binding IsRecording}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <TextBlock Text="⏹️" VerticalAlignment="Center"/>
+                                <TextBlock Text="Stop &amp; Process" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="neutral" Command="{Binding SelectAndProcessVideoCommand}"
+                                IsEnabled="{Binding !IsRecording}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <TextBlock Text="📁" VerticalAlignment="Center"/>
+                                <TextBlock Text="Import Video" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="3" Text="Runs in the system tray while minimized."
+                               FontSize="10" Foreground="#334155" TextAlignment="Center" Margin="0,12,0,0"/>
+                </Grid>
+
+                <!-- RIGHT: Recap viewer -->
+                <Grid Grid.Column="2" RowDefinitions="Auto, Auto, *">
+                    <TextBlock Grid.Row="0" Text="Meeting Summary" FontSize="18" FontWeight="SemiBold"
+                               Foreground="#F8FAFC" Margin="0,0,0,12"/>
+
+                    <!-- No-speech error banner -->
+                    <Border Grid.Row="1"
+                            IsVisible="{Binding HasError}"
+                            Background="#1A450A0A"
+                            BorderBrush="#7F1D1D"
+                            BorderThickness="0,0,0,0"
+                            CornerRadius="6"
+                            Margin="0,0,0,10"
+                            Padding="0">
+                        <Grid ColumnDefinitions="4, *">
+                            <!-- Red left accent bar -->
+                            <Border Grid.Column="0" Background="{StaticResource AccentRedBrush}" CornerRadius="6,0,0,6"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="14,12">
+                                <TextBlock Text="⚠️" FontSize="16" VerticalAlignment="Center"/>
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="No Speech Detected" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="#FCA5A5"/>
+                                    <TextBlock Text="{Binding ErrorMessage}" FontSize="11" Foreground="#FDA4AF"
+                                               TextWrapping="Wrap" MaxWidth="500"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2" Background="{StaticResource BackgroundCardBrush}" BorderBrush="#334155" BorderThickness="1"
+                            CornerRadius="6" Padding="2" Height="460">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <TextBox Text="{Binding RecapText}" IsReadOnly="True" TextWrapping="Wrap"
+                                     AcceptsReturn="True" Background="Transparent" BorderThickness="0"
+                                     Foreground="#E2E8F0" FontSize="13" LineHeight="22"
+                                     FontFamily="Consolas, Courier New, monospace" Padding="18"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

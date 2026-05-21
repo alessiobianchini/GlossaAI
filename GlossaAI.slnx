@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GlossaAI.Core/GlossaAI.Core.csproj" />
+    <Project Path="src/GlossaAI.Desktop/GlossaAI.Desktop.csproj" />
+    <Project Path="src/GlossaAI.Infrastructure/GlossaAI.Infrastructure.csproj" />
+  </Folder>
+</Solution>

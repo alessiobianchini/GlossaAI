@@ -1,0 +1,158 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GlossaAI.Desktop.ViewModels"
+        xmlns:models="using:GlossaAI.Core.Domain.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="460"
+        x:Class="GlossaAI.Desktop.Views.RecordSetupDialog"
+        x:DataType="vm:RecordSetupViewModel"
+        Title="Pre-Recording Setup"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        TransparencyLevelHint="Mica"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="40">
+
+    <Window.Styles>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource AccentGreenBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.primary /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#12B876"/>
+        </Style>
+        <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252B36"/>
+            <Setter Property="Foreground" Value="#8A94A6"/>
+        </Style>
+
+        <Style Selector="Button.neutral">
+            <Setter Property="Background" Value="{StaticResource AccentBlueBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.neutral /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.neutral:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2A5C84"/>
+        </Style>
+        <Style Selector="Button.neutral:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252B36"/>
+            <Setter Property="Foreground" Value="#8A94A6"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial BackgroundSource="Digger" TintColor="{StaticResource BackgroundDefault}" TintOpacity="0.9" MaterialOpacity="0.8"/>
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+
+        <!-- Vertical StackPanel inside a Border background wrapper -->
+        <Border BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="20,40,20,20" Padding="20">
+            <StackPanel Spacing="14" Width="300">
+                <!-- Header Text Block -->
+                <TextBlock Text="Pre-Recording Session Setup"
+                           FontWeight="Bold"
+                           FontSize="16"
+                           Foreground="#F8FAFC"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,6"/>
+
+                <!-- ComboBox for Input Language -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Input Language (Speech-to-Text)" FontSize="11" Foreground="#94A3B8"/>
+                    <ComboBox ItemsSource="{Binding AvailableLanguages}"
+                              SelectedValue="{Binding InputLanguage}"
+                              SelectedValueBinding="{Binding Code}"
+                              HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="models:AppLang">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- ComboBox for Output Language -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Output Language (AI Recap Translation)" FontSize="11" Foreground="#94A3B8"/>
+                    <ComboBox ItemsSource="{Binding AvailableLanguages}"
+                              SelectedValue="{Binding OutputLanguage}"
+                              SelectedValueBinding="{Binding Code}"
+                              HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="models:AppLang">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- ComboBox for AI Model -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="AI Synthesis Model Selection" FontSize="11" Foreground="#94A3B8"/>
+                    <ComboBox ItemsSource="{Binding AvailableModels}"
+                              SelectedItem="{Binding SelectedModel}"
+                              HorizontalAlignment="Stretch"/>
+                </StackPanel>
+
+                <!-- ComboBox for Meeting Context / Target Topic -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Meeting Context / Target Topic" FontSize="11" Foreground="#94A3B8"/>
+                    <ComboBox ItemsSource="{Binding AvailableContexts}"
+                              SelectedValue="{Binding SelectedContext}"
+                              SelectedValueBinding="{Binding Value}"
+                              HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="vm:ContextOption">
+                                <TextBlock Text="{Binding DisplayName}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <Separator Background="#334155" Height="1" Margin="0,8"/>
+
+                <!-- Horizontal StackPanel for Buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                    <Button Classes="neutral"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            CommandParameter="{Binding $parent[Window]}"
+                            Width="100"
+                            HorizontalContentAlignment="Center"/>
+                    <Button Classes="primary"
+                            Content="Confirm &amp; Start"
+                            Command="{Binding ConfirmCommand}"
+                            CommandParameter="{Binding $parent[Window]}"
+                            Width="140"
+                            HorizontalContentAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

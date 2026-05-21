@@ -87,39 +87,11 @@ jobs:
         run: |
           mkdir -p GlossaAI.app/Contents/MacOS
           mkdir -p GlossaAI.app/Contents/Resources
-          cp -R ./publish/osx-x64/* GlossaAI.app/Contents/MacOS/
+          cp -R ./publish/osx-x64/. GlossaAI.app/Contents/MacOS/
           chmod +x GlossaAI.app/Contents/MacOS/GlossaAI.Desktop
-          cat <<EOF > GlossaAI.app/Contents/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleDevelopmentRegion</key>
-              <string>English</string>
-              <key>CFBundleExecutable</key>
-              <string>GlossaAI.Desktop</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.alessiobianchini.glossaai</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>GlossaAI</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0.0</string>
-              <key>CFBundleSignature</key>
-              <string>????</string>
-              <key>CFBundleVersion</key>
-              <string>1.0.0</string>
-              <key>LSMinimumSystemVersion</key>
-              <string>10.12</string>
-              <key>NSPrincipalClass</key>
-              <string>NSApplication</string>
-          </dict>
-          </plist>
-          EOF
+          cp src/GlossaAI.Desktop/Info.plist GlossaAI.app/Contents/Info.plist
           hdiutil create -volname "GlossaAI Installer" -srcfolder GlossaAI.app -ov -format UDZO GlossaAI-osx-x64.dmg
+
 
       # Linux archive packaging
       - name: Compress Build Artifacts (Linux)

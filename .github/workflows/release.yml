@@ -122,16 +122,16 @@ jobs:
           } >> build.log 2>&1 || {
             echo "=== BUILD FAILED ===" >> build.log
             cat build.log
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git checkout -b debug-macos-logs
-            git add build.log
-            git commit -m "chore: debug macos build failure"
-            git push -f origin debug-macos-logs
             exit 1
           }
           echo "=== BUILD SUCCEEDED ===" >> build.log
           cat build.log
+
+      - name: Upload Logs on Failure
+        if: failure() && matrix.os == 'macos-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build.log
 
 
       # Linux archive packaging

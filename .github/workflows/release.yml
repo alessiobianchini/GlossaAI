@@ -36,6 +36,9 @@ jobs:
           echo "=== Disk space before cleanup ==="
           df -h
           sudo rm -rf /Users/runner/Library/Android
+          sudo rm -rf /Library/Developer/CoreSimulator
+          sudo rm -rf /Users/runner/Library/Developer/CoreSimulator
+          sudo rm -rf /Applications/Xcode*.app
           echo "=== Disk space after cleanup ==="
           df -h
 

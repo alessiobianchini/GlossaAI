@@ -10,11 +10,11 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="GlossaAI - Meeting Assistant"
-        TransparencyLevelHint="AcrylicBlur, None"
         Background="#1E222B"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="40"
-        SizeToContent="WidthAndHeight"
+        Width="1100"
+        Height="720"
+        MinWidth="800"
+        MinHeight="600"
         CanResize="True">
 
     <Window.Styles>

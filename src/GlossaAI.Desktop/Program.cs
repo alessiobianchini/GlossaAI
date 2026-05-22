@@ -1,12 +1,15 @@
 using Avalonia;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GlossaAI.Desktop;
 
 sealed class Program
 {
+    private static Mutex? _mutex;
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -19,7 +22,28 @@ sealed class Program
             ex.SetObserved();
         };
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        const string mutexName = @"Global\GlossaAI.Desktop.UniqueMutex";
+        _mutex = new Mutex(true, mutexName, out bool createdNew);
+        if (!createdNew)
+        {
+            _mutex.Dispose();
+            return;
+        }
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            try
+            {
+                _mutex.ReleaseMutex();
+            }
+            catch (ObjectDisposedException) { }
+            catch (ApplicationException) { }
+            _mutex.Dispose();
+        }
     }
 
     public static AppBuilder BuildAvaloniaApp()

@@ -72,7 +72,7 @@ public partial class App : Application
         services.AddHttpClient();
 
         var configService = new ConfigurationService();
-        var settings = configService.LoadSettingsAsync().GetAwaiter().GetResult();
+        var settings = configService.LoadSettings();
         services.AddSingleton(configService);
         services.AddSingleton(settings);
         

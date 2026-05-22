@@ -31,6 +31,27 @@ public class ConfigurationService
         }
     }
 
+    public ProviderSettings LoadSettings()
+    {
+        try
+        {
+            if (File.Exists(_filePath))
+            {
+                var json = File.ReadAllText(_filePath);
+                var settings = JsonSerializer.Deserialize<ProviderSettings>(json);
+                if (settings != null)
+                {
+                    return settings;
+                }
+            }
+        }
+        catch
+        {
+            // Suppress errors and fallback to default configuration
+        }
+        return new ProviderSettings();
+    }
+
     public async Task<ProviderSettings> LoadSettingsAsync()
     {
         try

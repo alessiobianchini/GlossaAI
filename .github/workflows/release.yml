@@ -112,19 +112,21 @@ jobs:
           SolidCompression=yes
           PrivilegesRequired=admin
           CloseApplications=force
+          ArchitecturesAllowed=x64
+          ArchitecturesInstallIn64BitMode=x64
           
           [Files]
           Source: "publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
           
           [Icons]
-          Name: "{group}\GlossaAI"; Filename: "{app}\GlossaAI.Desktop.exe"
-          Name: "{autodesktop}\GlossaAI"; Filename: "{app}\GlossaAI.Desktop.exe"; Tasks: desktopicon
+          Name: "{group}\GlossaAI"; Filename: "{app}\GlossaAI.Desktop.exe"; WorkingDir: "{app}"
+          Name: "{autodesktop}\GlossaAI"; Filename: "{app}\GlossaAI.Desktop.exe"; WorkingDir: "{app}"; Tasks: desktopicon
           
           [Tasks]
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
           
           [Run]
-          Filename: "{app}\GlossaAI.Desktop.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; Flags: nowait postinstall skipifsilent runasoriginaluser
+          Filename: "{app}\GlossaAI.Desktop.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent runasoriginaluser
           "@
           Set-Content -Path setup.iss -Value $issContent
 

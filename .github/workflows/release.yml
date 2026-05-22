@@ -51,7 +51,7 @@ jobs:
         run: dotnet restore
 
       - name: Publish standalone application
-        run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:ReadyToRun=true -o ./publish/${{ matrix.rid }}
+        run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o ./publish/${{ matrix.rid }}
 
       - name: Setup FFmpeg (Windows)
         if: matrix.os == 'windows-latest'

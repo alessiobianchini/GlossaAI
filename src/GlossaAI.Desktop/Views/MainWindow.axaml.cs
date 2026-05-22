@@ -50,4 +50,16 @@ public partial class MainWindow : Window
         _isRealClose = true;
         this.Close();
     }
+
+    /// <summary>
+    /// Reset MainWindow reference on desktop lifetime once closed.
+    /// </summary>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow == this)
+        {
+            desktop.MainWindow = null;
+        }
+    }
 }

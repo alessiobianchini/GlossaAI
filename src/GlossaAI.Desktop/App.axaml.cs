@@ -3,6 +3,7 @@ using System.IO;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using GlossaAI.Core.Domain.Interfaces;
 using GlossaAI.Core.Domain.Models;
 using GlossaAI.Core.Services;
@@ -83,55 +84,67 @@ public partial class App : Application
 
     public void OnShowApplicationClick(object? sender, EventArgs e)
     {
-        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
-
-        if (desktop.MainWindow == null)
+        Dispatcher.UIThread.Post(() =>
         {
-            var mainViewModel = Services?.GetService(typeof(MainViewModel)) as MainViewModel;
-            if (mainViewModel != null)
+            if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
+
+            if (desktop.MainWindow == null)
             {
-                desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
+                var mainViewModel = Services?.GetService(typeof(MainViewModel)) as MainViewModel;
+                if (mainViewModel != null)
+                {
+                    desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
+                }
             }
-        }
 
-        desktop.MainWindow?.Show();
-        if (desktop.MainWindow != null)
-        {
-            desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
-            desktop.MainWindow.Activate();
-        }
+            desktop.MainWindow?.Show();
+            if (desktop.MainWindow != null)
+            {
+                desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                desktop.MainWindow.Activate();
+            }
+        });
     }
 
     public void OnStartRecordingClick(object? sender, EventArgs e)
     {
-        var vm = Services?.GetService<MainViewModel>();
-        if (vm != null && vm.StartRecordingCommand.CanExecute(null))
+        Dispatcher.UIThread.Post(() =>
         {
-            vm.StartRecordingCommand.Execute(null);
-        }
+            var vm = Services?.GetService<MainViewModel>();
+            if (vm != null && vm.StartRecordingCommand.CanExecute(null))
+            {
+                vm.StartRecordingCommand.Execute(null);
+            }
+        });
     }
 
     public void OnStopRecordingClick(object? sender, EventArgs e)
     {
-        var vm = Services?.GetService<MainViewModel>();
-        if (vm != null && vm.StopRecordingCommand.CanExecute(null))
+        Dispatcher.UIThread.Post(() =>
         {
-            vm.StopRecordingCommand.Execute(null);
-        }
+            var vm = Services?.GetService<MainViewModel>();
+            if (vm != null && vm.StopRecordingCommand.CanExecute(null))
+            {
+                vm.StopRecordingCommand.Execute(null);
+            }
+        });
     }
 
     public void OnExitClick(object? sender, EventArgs e)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        Dispatcher.UIThread.Post(() =>
         {
-            if (desktop.MainWindow is MainWindow mainWindow)
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                mainWindow.RealClose();
+                if (desktop.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.RealClose();
+                }
+                else
+                {
+                    desktop.Shutdown();
+                }
             }
-            else
-            {
-                desktop.Shutdown();
-            }
-        }
+        });
     }
 }

@@ -48,7 +48,7 @@
     <!-- Configure System Tray Icons for Windows, macOS, Linux -->
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="GlossaAI Meeting Assistant">
+            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="GlossaAI Meeting Assistant" Clicked="OnShowApplicationClick">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="Mostra Dashboard" Click="OnShowApplicationClick"/>

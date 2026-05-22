@@ -30,6 +30,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Free Disk Space (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          sudo rm -rf /Users/runner/Library/Android
+          echo "=== Disk space after cleanup ==="
+          df -h
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -41,9 +50,15 @@ jobs:
       - name: Publish standalone application
         run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:ReadyToRun=true -o ./publish/${{ matrix.rid }}
 
-      - name: Setup FFmpeg (Windows/Linux)
-        if: matrix.os != 'macos-latest'
+      - name: Setup FFmpeg (Windows)
+        if: matrix.os == 'windows-latest'
         uses: FedericoCarboni/setup-ffmpeg@v3
+
+      - name: Setup FFmpeg (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
       - name: Setup FFmpeg (macOS)
         if: matrix.os == 'macos-latest'

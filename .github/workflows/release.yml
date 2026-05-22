@@ -124,7 +124,7 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
           
           [Run]
-          Filename: "{app}\GlossaAI.Desktop.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; Flags: nowait postinstall skipifsilent
+          Filename: "{app}\GlossaAI.Desktop.exe"; Description: "{cm:LaunchProgram,GlossaAI}"; Flags: nowait postinstall skipifsilent runasoriginaluser
           "@
           Set-Content -Path setup.iss -Value $issContent
 

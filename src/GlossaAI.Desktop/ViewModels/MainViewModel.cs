@@ -161,6 +161,13 @@ public partial class MainViewModel : ViewModelBase
         RecordingConfig? config = null;
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow is { } parent)
         {
+            if (!parent.IsVisible || parent.WindowState == Avalonia.Controls.WindowState.Minimized)
+            {
+                parent.Show();
+                parent.WindowState = Avalonia.Controls.WindowState.Normal;
+                parent.Activate();
+            }
+
             var dialogViewModel = new RecordSetupViewModel(_providerSettings);
             var dialog = new Views.RecordSetupDialog { DataContext = dialogViewModel };
             config = await dialog.ShowDialog<RecordingConfig?>(parent);

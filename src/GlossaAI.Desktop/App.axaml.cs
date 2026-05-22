@@ -147,14 +147,14 @@ public partial class App : Application
     {
         try
         {
-            Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(async () =>
             {
                 try
                 {
                     var vm = Services?.GetService<MainViewModel>();
                     if (vm != null && vm.StartRecordingCommand.CanExecute(null))
                     {
-                        vm.StartRecordingCommand.Execute(null);
+                        await vm.StartRecordingCommand.ExecuteAsync(null);
                     }
                 }
                 catch (Exception ex)
@@ -175,14 +175,14 @@ public partial class App : Application
     {
         try
         {
-            Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(async () =>
             {
                 try
                 {
                     var vm = Services?.GetService<MainViewModel>();
                     if (vm != null && vm.StopRecordingCommand.CanExecute(null))
                     {
-                        vm.StopRecordingCommand.Execute(null);
+                        await vm.StopRecordingCommand.ExecuteAsync(null);
                     }
                 }
                 catch (Exception ex)

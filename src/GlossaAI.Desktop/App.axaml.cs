@@ -32,6 +32,12 @@ public partial class App : Application
         ConfigureServices(serviceCollection);
         Services = serviceCollection.BuildServiceProvider();
 
+        Dispatcher.UIThread.UnhandledException += (sender, args) =>
+        {
+            LogException(args.Exception, "Dispatcher.UIThread.UnhandledException");
+            args.Handled = false;
+        };
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainViewModel = Services.GetRequiredService<MainViewModel>();
@@ -82,69 +88,148 @@ public partial class App : Application
         services.AddSingleton<MainViewModel>();
     }
 
+    private void LogException(Exception? ex, string context)
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "GlossaAI");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, "crash.log");
+            File.AppendAllText(path,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{context}] {ex}\n\n");
+        }
+        catch { }
+    }
+
     public void OnShowApplicationClick(object? sender, EventArgs e)
     {
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
-
-            if (desktop.MainWindow == null)
+            Dispatcher.UIThread.Post(() =>
             {
-                var mainViewModel = Services?.GetService(typeof(MainViewModel)) as MainViewModel;
-                if (mainViewModel != null)
+                try
                 {
-                    desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
-                }
-            }
+                    if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
 
-            desktop.MainWindow?.Show();
-            if (desktop.MainWindow != null)
-            {
-                desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
-                desktop.MainWindow.Activate();
-            }
-        });
+                    if (desktop.MainWindow == null)
+                    {
+                        var mainViewModel = Services?.GetService(typeof(MainViewModel)) as MainViewModel;
+                        if (mainViewModel != null)
+                        {
+                            desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
+                        }
+                    }
+
+                    desktop.MainWindow?.Show();
+                    if (desktop.MainWindow != null)
+                    {
+                        desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                        desktop.MainWindow.Activate();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogException(ex, "OnShowApplicationClick Action");
+                    throw;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, "OnShowApplicationClick Outer");
+            throw;
+        }
     }
 
     public void OnStartRecordingClick(object? sender, EventArgs e)
     {
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            var vm = Services?.GetService<MainViewModel>();
-            if (vm != null && vm.StartRecordingCommand.CanExecute(null))
+            Dispatcher.UIThread.Post(() =>
             {
-                vm.StartRecordingCommand.Execute(null);
-            }
-        });
+                try
+                {
+                    var vm = Services?.GetService<MainViewModel>();
+                    if (vm != null && vm.StartRecordingCommand.CanExecute(null))
+                    {
+                        vm.StartRecordingCommand.Execute(null);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogException(ex, "OnStartRecordingClick Action");
+                    throw;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, "OnStartRecordingClick Outer");
+            throw;
+        }
     }
 
     public void OnStopRecordingClick(object? sender, EventArgs e)
     {
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            var vm = Services?.GetService<MainViewModel>();
-            if (vm != null && vm.StopRecordingCommand.CanExecute(null))
+            Dispatcher.UIThread.Post(() =>
             {
-                vm.StopRecordingCommand.Execute(null);
-            }
-        });
+                try
+                {
+                    var vm = Services?.GetService<MainViewModel>();
+                    if (vm != null && vm.StopRecordingCommand.CanExecute(null))
+                    {
+                        vm.StopRecordingCommand.Execute(null);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogException(ex, "OnStopRecordingClick Action");
+                    throw;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, "OnStopRecordingClick Outer");
+            throw;
+        }
     }
 
     public void OnExitClick(object? sender, EventArgs e)
     {
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            Dispatcher.UIThread.Post(() =>
             {
-                if (desktop.MainWindow is MainWindow mainWindow)
+                try
                 {
-                    mainWindow.RealClose();
+                    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        if (desktop.MainWindow is MainWindow mainWindow)
+                        {
+                            mainWindow.RealClose();
+                        }
+                        else
+                        {
+                            desktop.Shutdown();
+                        }
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    desktop.Shutdown();
+                    LogException(ex, "OnExitClick Action");
+                    throw;
                 }
-            }
-        });
+            });
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, "OnExitClick Outer");
+            throw;
+        }
     }
 }

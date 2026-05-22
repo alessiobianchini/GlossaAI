@@ -111,7 +111,7 @@ jobs:
           Compression=lzma
           SolidCompression=yes
           PrivilegesRequired=admin
-          CloseApplications=yes
+          CloseApplications=force
           
           [Files]
           Source: "publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -75,6 +75,7 @@ public partial class App : Application
         var settings = configService.LoadSettings();
         services.AddSingleton(configService);
         services.AddSingleton(settings);
+        services.AddSingleton<UpdateService>();
         
         services.AddSingleton<ISTTProvider, WhisperNetProvider>();
         services.AddSingleton<IAudioEngine, WasapiAudioEngine>();
@@ -83,6 +84,7 @@ public partial class App : Application
         services.AddSingleton<OllamaProvider>();
         services.AddSingleton<OpenAiProvider>();
         services.AddSingleton<ILLMProviderFactory, LlmProviderFactory>();
+        services.AddSingleton<HistoryService>();
 
         services.AddSingleton<MeetingManager>();
         services.AddSingleton<MainViewModel>();

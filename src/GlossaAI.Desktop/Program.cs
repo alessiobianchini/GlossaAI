@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Diagnostics;
 using System;
 using System.IO;
 using System.Threading;
@@ -49,9 +50,6 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-#if DEBUG
-            .WithDeveloperTools()
-#endif
             .WithInterFont()
             .LogToTrace();
 

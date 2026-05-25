@@ -25,7 +25,12 @@ public partial class MainViewModel : ViewModelBase
     private readonly ILLMProviderFactory _llmProviderFactory;
     private readonly ProviderSettings    _providerSettings;
     private readonly GlossaAI.Core.Services.ConfigurationService _configService;
+    private readonly HistoryService      _historyService;
+    private readonly UpdateService       _updateService;
     private readonly ILogger<MainViewModel> _logger;
+
+    // Navigation (0 = Recorder, 1 = History, 2 = Settings)
+    [ObservableProperty] private int _selectedPageIndex = 0;
 
     [ObservableProperty] private string _recapText = "Select audio sources and start recording, or import a video file.";
     [ObservableProperty] private bool   _isRecording;
@@ -55,13 +60,21 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ExportTranslationCommand))]
     private string _translationText = string.Empty;
 
+    [ObservableProperty] private bool _isUpdateAvailable;
+    [ObservableProperty] private string _newVersionName = string.Empty;
+    [ObservableProperty] private bool _isDownloadingUpdate;
+    [ObservableProperty] private int _downloadProgress;
+    private string _updateDownloadUrl = string.Empty;
+
     public SettingsViewModel Settings { get; }
 
     public ObservableCollection<AudioDevice> Microphones    { get; } = [];
     public ObservableCollection<AudioDevice> DesktopSources { get; } = [];
+    public ObservableCollection<MeetingRecord> PastMeetings { get; } = [];
 
     [ObservableProperty] private AudioDevice? _selectedMicrophone;
     [ObservableProperty] private AudioDevice? _selectedDesktopSource;
+    [ObservableProperty] private MeetingRecord? _selectedMeeting;
 
     public MainViewModel(
         MeetingManager meetingManager,
@@ -69,6 +82,8 @@ public partial class MainViewModel : ViewModelBase
         ILLMProviderFactory llmProviderFactory,
         ProviderSettings providerSettings,
         GlossaAI.Core.Services.ConfigurationService configService,
+        HistoryService historyService,
+        UpdateService updateService,
         ILogger<MainViewModel> logger)
     {
         _meetingManager     = meetingManager     ?? throw new ArgumentNullException(nameof(meetingManager));
@@ -76,12 +91,135 @@ public partial class MainViewModel : ViewModelBase
         _llmProviderFactory = llmProviderFactory ?? throw new ArgumentNullException(nameof(llmProviderFactory));
         _providerSettings   = providerSettings   ?? throw new ArgumentNullException(nameof(providerSettings));
         _configService      = configService      ?? throw new ArgumentNullException(nameof(configService));
+        _historyService     = historyService     ?? throw new ArgumentNullException(nameof(historyService));
+        _updateService      = updateService      ?? throw new ArgumentNullException(nameof(updateService));
         _logger             = logger             ?? throw new ArgumentNullException(nameof(logger));
         Settings = new SettingsViewModel(providerSettings, configService);
 
         _audioEngine.MicLevelChanged     += level => Dispatcher.UIThread.Post(() => MicLevel     = level * 100.0);
         _audioEngine.DesktopLevelChanged += level => Dispatcher.UIThread.Post(() => DesktopLevel = level * 100.0);
         _audioEngine.DevicesChanged      += () => Dispatcher.UIThread.Post(() => RefreshDevicesCommand.Execute(null));
+
+        _ = LoadHistoryAsync();
+        _ = CheckForUpdatesAsync();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        var (available, newVersion, url) = await _updateService.CheckForUpdatesAsync();
+        if (available)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                NewVersionName = newVersion;
+                _updateDownloadUrl = url;
+                IsUpdateAvailable = true;
+            });
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartUpdateAsync()
+    {
+        IsDownloadingUpdate = true;
+        try
+        {
+            await _updateService.DownloadAndInstallUpdateAsync(_updateDownloadUrl, progress =>
+            {
+                Dispatcher.UIThread.Post(() => DownloadProgress = progress);
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Update failed.");
+            IsDownloadingUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private void SwitchTab(string indexStr)
+    {
+        if (int.TryParse(indexStr, out int index))
+        {
+            SelectedPageIndex = index;
+            OnPropertyChanged(nameof(IsRecorderVisible));
+            OnPropertyChanged(nameof(IsHistoryVisible));
+            OnPropertyChanged(nameof(IsSettingsVisible));
+            // Clear selections when switching to recorder
+            if (index == 0)
+            {
+                SelectedMeeting = null;
+                if (!IsRecording && !IsProcessing)
+                {
+                    TranscriptionText = "";
+                    AiRecapText = "";
+                    TranslationText = "";
+                    RecapText = "Select audio sources and start recording, or import a video file.";
+                }
+            }
+        }
+    }
+
+    public bool IsRecorderVisible => SelectedPageIndex == 0;
+    public bool IsHistoryVisible => SelectedPageIndex == 1;
+    public bool IsSettingsVisible => SelectedPageIndex == 2;
+
+    private async Task LoadHistoryAsync()
+    {
+        var history = await _historyService.LoadHistoryAsync();
+        Dispatcher.UIThread.Post(() =>
+        {
+            PastMeetings.Clear();
+            foreach (var record in history.OrderByDescending(r => r.Date))
+            {
+                PastMeetings.Add(record);
+            }
+        });
+    }
+
+    private async Task SaveMeetingToHistoryAsync(string transcription, string recap)
+    {
+        var title = "Meeting " + DateTime.Now.ToString("g");
+        
+        // Attempt to extract a better title from the recap
+        var lines = recap.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length > 0 && lines[0].StartsWith("# "))
+        {
+            title = lines[0].Substring(2).Trim();
+        }
+        else if (lines.Length > 0 && lines[0].StartsWith("**Executive Summary**"))
+        {
+            title = "Executive Summary " + DateTime.Now.ToString("g");
+        }
+
+        var record = new MeetingRecord
+        {
+            Date = DateTime.Now,
+            Title = title,
+            TranscriptionText = transcription,
+            AiRecapText = recap
+        };
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            PastMeetings.Insert(0, record);
+            SelectedMeeting = record;
+        });
+
+        // Save to disk
+        var currentList = PastMeetings.ToList();
+        await _historyService.SaveHistoryAsync(currentList);
+    }
+
+    partial void OnSelectedMeetingChanged(MeetingRecord? value)
+    {
+        if (value != null)
+        {
+            TranscriptionText = value.TranscriptionText;
+            AiRecapText = value.AiRecapText;
+            RecapText = value.AiRecapText;
+            TranslationText = string.Empty;
+        }
     }
 
     // ── Recording ──────────────────────────────────────────────────────────────
@@ -228,6 +366,8 @@ public partial class MainViewModel : ViewModelBase
             AiRecapText       = recap;
             RecapText         = recap;
             StatusText        = "Processing completed.";
+
+            await SaveMeetingToHistoryAsync(transcription, recap);
         }
         catch (NoSpeechException)
         {
@@ -276,6 +416,8 @@ public partial class MainViewModel : ViewModelBase
             AiRecapText       = recap;
             RecapText         = recap;
             StatusText        = "Processing complete.";
+
+            await SaveMeetingToHistoryAsync(transcription, recap);
         }
         catch (NoSpeechException)
         {
@@ -292,6 +434,18 @@ public partial class MainViewModel : ViewModelBase
             RecapText     = $"Could not complete video recap:\n{ex.Message}";
         }
         finally { IsProcessing = false; }
+    }
+
+    [RelayCommand]
+    private async Task DeleteMeetingAsync(MeetingRecord record)
+    {
+        if (record == null) return;
+        PastMeetings.Remove(record);
+        if (SelectedMeeting == record)
+        {
+            SelectedMeeting = PastMeetings.FirstOrDefault();
+        }
+        await _historyService.SaveHistoryAsync(PastMeetings.ToList());
     }
 
     // ── Translation ─────────────────────────────────────────────────────────────

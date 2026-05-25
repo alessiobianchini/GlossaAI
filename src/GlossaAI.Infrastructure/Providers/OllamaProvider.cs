@@ -46,10 +46,10 @@ public class OllamaProvider : ILLMProvider
             using var reader = new System.IO.StreamReader(stream);
             var fullResponse = new System.Text.StringBuilder();
 
-            while (!reader.EndOfStream)
+            string? line;
+            while ((line = await reader.ReadLineAsync()) != null)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var line = await reader.ReadLineAsync();
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
                 try

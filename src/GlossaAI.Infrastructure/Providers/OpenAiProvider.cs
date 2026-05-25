@@ -58,11 +58,10 @@ public class OpenAiProvider : ILLMProvider
             using var reader = new System.IO.StreamReader(stream);
             var fullResponse = new System.Text.StringBuilder();
 
-            while (!reader.EndOfStream)
+            string? line;
+            while ((line = await reader.ReadLineAsync()) != null)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var line = await reader.ReadLineAsync();
-                
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 if (!line.StartsWith("data: ")) continue;
 
@@ -102,6 +101,9 @@ public class OpenAiProvider : ILLMProvider
     {
         [JsonPropertyName("model")]
         public string Model { get; set; } = string.Empty;
+
+        [JsonPropertyName("stream")]
+        public bool Stream { get; set; }
 
         [JsonPropertyName("messages")]
         public OpenAiChatMessage[] Messages { get; set; } = Array.Empty<OpenAiChatMessage>();

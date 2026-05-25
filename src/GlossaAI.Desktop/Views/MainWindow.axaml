@@ -255,7 +255,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="⏹️"/><TextBlock Text="Stop &amp; Process"/></StackPanel>
                                 </Button>
                                 <Button Classes="neutral" Command="{Binding SelectAndProcessVideoCommand}" IsEnabled="{Binding !IsRecording}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="📁"/><TextBlock Text="Import Video"/></StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="📁"/><TextBlock Text="Import Media"/></StackPanel>
                                 </Button>
                             </StackPanel>
                         </Grid>

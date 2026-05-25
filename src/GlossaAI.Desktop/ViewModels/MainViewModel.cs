@@ -397,9 +397,13 @@ public partial class MainViewModel : ViewModelBase
         {
             var result = await desktop.MainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Select Meeting Video",
+                Title = "Select Meeting Media",
                 AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Video Files") { Patterns = ["*.mp4", "*.mkv", "*.mov", "*.avi"] }]
+                FileTypeFilter = [
+                    new FilePickerFileType("Media Files") { Patterns = ["*.mp4", "*.mkv", "*.mov", "*.avi", "*.mp3", "*.wav", "*.m4a", "*.flac", "*.ogg"] },
+                    new FilePickerFileType("Video Files") { Patterns = ["*.mp4", "*.mkv", "*.mov", "*.avi"] },
+                    new FilePickerFileType("Audio Files") { Patterns = ["*.mp3", "*.wav", "*.m4a", "*.flac", "*.ogg"] }
+                ]
             });
 
             if (result.Count == 0) { StatusText = "No file selected."; return; }

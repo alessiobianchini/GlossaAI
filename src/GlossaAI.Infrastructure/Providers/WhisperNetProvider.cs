@@ -91,13 +91,16 @@ public class WhisperNetProvider : ISTTProvider
 
             try
             {
+                var totalDuration = GetWavDuration(filePath);
+                var durationStr = totalDuration.TotalSeconds > 0 ? totalDuration.ToString(@"hh\:mm\:ss") : "??:??:??";
+
                 await foreach (var segment in processor.ProcessAsync(audioStream, cancellationToken))
                 {
                     var text = segment.Text?.Trim();
                     if (!string.IsNullOrEmpty(text))
                         transcript.AppendLine(text);
                     
-                    progress?.Report($"Transcribing... ({segment.Start:hh\\:mm\\:ss})");
+                    progress?.Report($"Transcribing... ({segment.Start:hh\\:mm\\:ss} / {durationStr})");
                 }
             }
             catch (OperationCanceledException)
@@ -118,5 +121,19 @@ public class WhisperNetProvider : ISTTProvider
             _logger.LogError(ex, "WhisperNetProvider: Processing failure.");
             throw new InvalidOperationException("Failed to process WAV inside Whisper. Verify format is 16kHz PCM mono.", ex);
         }
+    }
+
+    private TimeSpan GetWavDuration(string filePath)
+    {
+        try
+        {
+            var info = new FileInfo(filePath);
+            if (info.Exists && info.Length > 44)
+            {
+                return TimeSpan.FromSeconds((info.Length - 44) / 32000.0);
+            }
+        }
+        catch { }
+        return TimeSpan.Zero;
     }
 }

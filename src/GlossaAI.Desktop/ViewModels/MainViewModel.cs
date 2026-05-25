@@ -367,7 +367,9 @@ public partial class MainViewModel : ViewModelBase
             var recapProgress = new Progress<string>(s => 
             {
                 AiRecapText += s;
-                RecapText = AiRecapText;
+                RecapText = AiRecapText
+                    .Replace("<think>", "🧠 RAGIONAMENTO IN CORSO...\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+                    .Replace("</think>", "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🎯 RISPOSTA FINALE:\n");
             });
 
             var (transcription, recap) = await _meetingManager.ProcessMeetingWithTranscriptAsync(file, progress, recapProgress, System.Threading.CancellationToken.None);
@@ -430,7 +432,9 @@ public partial class MainViewModel : ViewModelBase
             var recapProgress = new Progress<string>(s => 
             {
                 AiRecapText += s;
-                RecapText = AiRecapText;
+                RecapText = AiRecapText
+                    .Replace("<think>", "🧠 RAGIONAMENTO IN CORSO...\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+                    .Replace("</think>", "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🎯 RISPOSTA FINALE:\n");
             });
 
             var (transcription, recap) = await _meetingManager.ProcessVideoMeetingWithTranscriptAsync(result[0].Path.LocalPath, progress, recapProgress, System.Threading.CancellationToken.None);

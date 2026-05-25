@@ -32,7 +32,7 @@ namespace GlossaAI.Core.Services
                 var latestVersionStr = release.TagName.TrimStart('v', 'V');
                 if (Version.TryParse(latestVersionStr, out Version latestVersion))
                 {
-                    var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
+                    var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(1, 0, 0, 0);
 
                     if (latestVersion > currentVersion)
                     {

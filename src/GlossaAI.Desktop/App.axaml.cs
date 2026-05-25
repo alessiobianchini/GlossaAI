@@ -69,10 +69,7 @@ public partial class App : Application
             builder.SetMinimumLevel(LogLevel.Information);
         });
 
-        services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
-        {
-            client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
-        });
+
 
         var configService = new ConfigurationService();
         var settings = configService.LoadSettings();
@@ -84,8 +81,8 @@ public partial class App : Application
         services.AddSingleton<IAudioEngine, WasapiAudioEngine>();
         services.AddSingleton<IVideoProcessor, FFmpegVideoProcessor>();
         
-        services.AddSingleton<OllamaProvider>();
-        services.AddSingleton<OpenAiProvider>();
+        services.AddHttpClient<OllamaProvider>(client => client.Timeout = System.Threading.Timeout.InfiniteTimeSpan);
+        services.AddHttpClient<OpenAiProvider>(client => client.Timeout = System.Threading.Timeout.InfiniteTimeSpan);
         services.AddSingleton<ILLMProviderFactory, LlmProviderFactory>();
         services.AddSingleton<HistoryService>();
 

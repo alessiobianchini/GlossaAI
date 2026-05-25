@@ -21,41 +21,55 @@ public class OllamaProvider : ILLMProvider
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _httpClient.Timeout = TimeSpan.FromMinutes(10);
     }
 
-    public async Task<string> SummarizeAsync(string transcription, string promptSystem)
+    public async Task<string> SummarizeAsync(string transcription, string promptSystem, IProgress<string>? onTokenGenerated = null, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("OllamaProvider: Summarizing with model '{Model}'...", _settings.SelectedModel);
+        _logger.LogInformation("OllamaProvider: Summarizing with model '{Model}' (Streaming)...", _settings.SelectedModel);
 
         var payload = new OllamaRequest
         {
             Model = _settings.SelectedModel,
             Prompt = transcription,
             System = promptSystem,
-            Stream = false
+            Stream = true
         };
 
         try
         {
             var targetUri = new Uri(new Uri(_settings.ApiUrl), "/api/generate");
-            var response = await _httpClient.PostAsJsonAsync(targetUri, payload);
+            var request = new HttpRequestMessage(HttpMethod.Post, targetUri) { Content = JsonContent.Create(payload) };
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<OllamaResponse>();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new System.IO.StreamReader(stream);
+            var fullResponse = new System.Text.StringBuilder();
 
-            if (result == null || string.IsNullOrEmpty(result.Response))
+            while (!reader.EndOfStream)
             {
-                _logger.LogWarning("OllamaProvider: Empty response received.");
-                return string.Empty;
+                cancellationToken.ThrowIfCancellationRequested();
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                try
+                {
+                    var chunk = System.Text.Json.JsonSerializer.Deserialize<OllamaResponse>(line);
+                    if (chunk != null && !string.IsNullOrEmpty(chunk.Response))
+                    {
+                        fullResponse.Append(chunk.Response);
+                        onTokenGenerated?.Report(chunk.Response);
+                    }
+                }
+                catch { /* Ignore parsing errors on partial streams */ }
             }
 
-            return result.Response;
+            return fullResponse.ToString();
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogError(ex, "OllamaProvider: Request timed out.");
-            return $"### Error generating recap\nCould not communicate with Ollama: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.\n\n*Please ensure Ollama is running and has model '{_settings.SelectedModel}' loaded.*";
+            _logger.LogError(ex, "OllamaProvider: Request timed out or cancelled.");
+            return $"### Error generating recap\nCould not communicate with Ollama: The request was canceled.\n\n*Please ensure Ollama is running and has model '{_settings.SelectedModel}' loaded.*";
         }
         catch (Exception ex)
         {
@@ -64,10 +78,10 @@ public class OllamaProvider : ILLMProvider
         }
     }
 
-    public async Task<string> TranslateAsync(string text, string targetLanguage)
+    public async Task<string> TranslateAsync(string text, string targetLanguage, IProgress<string>? onTokenGenerated = null, CancellationToken cancellationToken = default)
     {
         var prompt = $"You are a professional translator. Translate the user input into {targetLanguage}. Output ONLY the direct translation.";
-        return await SummarizeAsync(text, prompt);
+        return await SummarizeAsync(text, prompt, onTokenGenerated, cancellationToken);
     }
 
     private class OllamaRequest

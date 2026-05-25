@@ -65,13 +65,13 @@ public class MeetingManager(
 
     private ILLMProvider ActiveLlm => _llmProviderFactory.GetProvider(_settings.SelectedProvider);
 
-    public async Task<string> ProcessMeetingAsync(string audioPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<string> ProcessMeetingAsync(string audioPath, IProgress<string>? progress = null, IProgress<string>? recapProgress = null, CancellationToken cancellationToken = default)
     {
-        var (_, recap) = await ProcessMeetingWithTranscriptAsync(audioPath, progress, cancellationToken);
+        var (_, recap) = await ProcessMeetingWithTranscriptAsync(audioPath, progress, recapProgress, cancellationToken);
         return recap;
     }
 
-    public async Task<(string Transcription, string Recap)> ProcessMeetingWithTranscriptAsync(string audioPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<(string Transcription, string Recap)> ProcessMeetingWithTranscriptAsync(string audioPath, IProgress<string>? progress = null, IProgress<string>? recapProgress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(audioPath))
             throw new ArgumentException("Audio file path cannot be null or empty.", nameof(audioPath));
@@ -94,18 +94,18 @@ public class MeetingManager(
         }
 
         progress?.Report("Analyzing transcription and generating summary...");
-        var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt);
+        var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt, recapProgress, cancellationToken);
         return (transcription, recap);
     }
 
-    public async Task<string> ProcessVideoMeetingAsync(string videoPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<string> ProcessVideoMeetingAsync(string videoPath, IProgress<string>? progress = null, IProgress<string>? recapProgress = null, CancellationToken cancellationToken = default)
     {
-        var (_, recap) = await ProcessVideoMeetingWithTranscriptAsync(videoPath, progress, cancellationToken);
+        var (_, recap) = await ProcessVideoMeetingWithTranscriptAsync(videoPath, progress, recapProgress, cancellationToken);
         return recap;
     }
 
     public async Task<(string Transcription, string Recap)> ProcessVideoMeetingWithTranscriptAsync(
-        string videoPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        string videoPath, IProgress<string>? progress = null, IProgress<string>? recapProgress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(videoPath))
             throw new ArgumentException("Video file path cannot be null or empty.", nameof(videoPath));
@@ -137,7 +137,7 @@ public class MeetingManager(
             }
 
             progress?.Report("Generating summary report...");
-            var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt);
+            var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt, recapProgress, cancellationToken);
             return (transcription, recap);
         }
         finally

@@ -23,12 +23,12 @@ public class OpenAiProvider : ILLMProvider
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<string> SummarizeAsync(string transcription, string promptSystem)
+    public async Task<string> SummarizeAsync(string transcription, string promptSystem, IProgress<string>? onTokenGenerated = null, System.Threading.CancellationToken cancellationToken = default)
     {
         var model = string.IsNullOrWhiteSpace(_settings.SelectedModel) ? "gpt-4o" : _settings.SelectedModel;
         var apiUrl = string.IsNullOrWhiteSpace(_settings.ApiUrl) ? "https://api.openai.com/v1/chat/completions" : _settings.ApiUrl;
 
-        _logger.LogInformation("Sending request to OpenAI using model '{Model}'...", model);
+        _logger.LogInformation("Sending streaming request to OpenAI using model '{Model}'...", model);
 
         var request = new HttpRequestMessage(HttpMethod.Post, apiUrl);
         if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
@@ -39,6 +39,7 @@ public class OpenAiProvider : ILLMProvider
         var payload = new OpenAiChatRequest
         {
             Model = model,
+            Stream = true,
             Messages = new[]
             {
                 new OpenAiChatMessage { Role = "system", Content = promptSystem },
@@ -50,19 +51,39 @@ public class OpenAiProvider : ILLMProvider
 
         try
         {
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<OpenAiChatResponse>();
-            var responseText = result?.Choices?[0]?.Message?.Content;
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new System.IO.StreamReader(stream);
+            var fullResponse = new System.Text.StringBuilder();
 
-            if (string.IsNullOrEmpty(responseText))
+            while (!reader.EndOfStream)
             {
-                _logger.LogWarning("OpenAI returned an empty response.");
-                return string.Empty;
+                cancellationToken.ThrowIfCancellationRequested();
+                var line = await reader.ReadLineAsync();
+                
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (!line.StartsWith("data: ")) continue;
+
+                var data = line.Substring(6).Trim();
+                if (data == "[DONE]") break;
+
+                try
+                {
+                    var chunk = System.Text.Json.JsonSerializer.Deserialize<OpenAiStreamResponse>(data);
+                    var content = chunk?.Choices?[0]?.Delta?.Content;
+                    
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        fullResponse.Append(content);
+                        onTokenGenerated?.Report(content);
+                    }
+                }
+                catch { /* Ignore parsing errors on partial streams */ }
             }
 
-            return responseText;
+            return fullResponse.ToString();
         }
         catch (Exception ex)
         {
@@ -71,10 +92,10 @@ public class OpenAiProvider : ILLMProvider
         }
     }
 
-    public async Task<string> TranslateAsync(string text, string targetLanguage)
+    public async Task<string> TranslateAsync(string text, string targetLanguage, IProgress<string>? onTokenGenerated = null, System.Threading.CancellationToken cancellationToken = default)
     {
         var promptSystem = $"You are a professional translator. Translate the user input into {targetLanguage}. Output ONLY the direct translation.";
-        return await SummarizeAsync(text, promptSystem);
+        return await SummarizeAsync(text, promptSystem, onTokenGenerated, cancellationToken);
     }
 
     private class OpenAiChatRequest
@@ -105,5 +126,23 @@ public class OpenAiProvider : ILLMProvider
     {
         [JsonPropertyName("message")]
         public OpenAiChatMessage Message { get; set; } = new();
+    }
+
+    private class OpenAiStreamResponse
+    {
+        [JsonPropertyName("choices")]
+        public OpenAiStreamChoice[] Choices { get; set; } = Array.Empty<OpenAiStreamChoice>();
+    }
+
+    private class OpenAiStreamChoice
+    {
+        [JsonPropertyName("delta")]
+        public OpenAiStreamDelta Delta { get; set; } = new();
+    }
+
+    private class OpenAiStreamDelta
+    {
+        [JsonPropertyName("content")]
+        public string? Content { get; set; }
     }
 }

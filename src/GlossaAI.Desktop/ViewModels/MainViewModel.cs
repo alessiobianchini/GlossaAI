@@ -361,7 +361,16 @@ public partial class MainViewModel : ViewModelBase
 
             var file = Path.Combine(Path.GetTempPath(), "GlossaAI_Meeting_Capture.wav");
             var progress = new Progress<string>(s => StatusText = s);
-            var (transcription, recap) = await _meetingManager.ProcessMeetingWithTranscriptAsync(file, progress, System.Threading.CancellationToken.None);
+            
+            AiRecapText = string.Empty;
+            RecapText = string.Empty;
+            var recapProgress = new Progress<string>(s => 
+            {
+                AiRecapText += s;
+                RecapText = AiRecapText;
+            });
+
+            var (transcription, recap) = await _meetingManager.ProcessMeetingWithTranscriptAsync(file, progress, recapProgress, System.Threading.CancellationToken.None);
 
             TranscriptionText = transcription;
             AiRecapText       = recap;
@@ -415,7 +424,16 @@ public partial class MainViewModel : ViewModelBase
             RecapText     = "Video loaded. Extracting audio...";
 
             var progress = new Progress<string>(s => StatusText = s);
-            var (transcription, recap) = await _meetingManager.ProcessVideoMeetingWithTranscriptAsync(result[0].Path.LocalPath, progress, System.Threading.CancellationToken.None);
+            
+            AiRecapText = string.Empty;
+            RecapText = string.Empty;
+            var recapProgress = new Progress<string>(s => 
+            {
+                AiRecapText += s;
+                RecapText = AiRecapText;
+            });
+
+            var (transcription, recap) = await _meetingManager.ProcessVideoMeetingWithTranscriptAsync(result[0].Path.LocalPath, progress, recapProgress, System.Threading.CancellationToken.None);
 
             TranscriptionText = transcription;
             AiRecapText       = recap;

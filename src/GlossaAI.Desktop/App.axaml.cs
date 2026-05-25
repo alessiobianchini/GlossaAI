@@ -69,7 +69,10 @@ public partial class App : Application
             builder.SetMinimumLevel(LogLevel.Information);
         });
 
-        services.AddHttpClient();
+        services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
+        {
+            client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+        });
 
         var configService = new ConfigurationService();
         var settings = configService.LoadSettings();

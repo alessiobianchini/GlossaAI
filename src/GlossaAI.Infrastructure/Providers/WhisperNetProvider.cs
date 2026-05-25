@@ -32,7 +32,7 @@ public class WhisperNetProvider : ISTTProvider
             : config.ModelDirectory;
     }
 
-    public async Task<string> TranscribeAudioAsync(string filePath, string language = "auto", CancellationToken cancellationToken = default)
+    public async Task<string> TranscribeAudioAsync(string filePath, string language = "auto", IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("WAV audio file path cannot be null or empty.", nameof(filePath));
@@ -96,6 +96,8 @@ public class WhisperNetProvider : ISTTProvider
                     var text = segment.Text?.Trim();
                     if (!string.IsNullOrEmpty(text))
                         transcript.AppendLine(text);
+                    
+                    progress?.Report($"Transcribing... ({segment.Start:hh\\:mm\\:ss})");
                 }
             }
             catch (OperationCanceledException)

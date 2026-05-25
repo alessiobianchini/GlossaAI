@@ -360,7 +360,8 @@ public partial class MainViewModel : ViewModelBase
             IsRecording = _audioEngine.IsRecording;
 
             var file = Path.Combine(Path.GetTempPath(), "GlossaAI_Meeting_Capture.wav");
-            var (transcription, recap) = await _meetingManager.ProcessMeetingWithTranscriptAsync(file, System.Threading.CancellationToken.None);
+            var progress = new Progress<string>(s => StatusText = s);
+            var (transcription, recap) = await _meetingManager.ProcessMeetingWithTranscriptAsync(file, progress, System.Threading.CancellationToken.None);
 
             TranscriptionText = transcription;
             AiRecapText       = recap;

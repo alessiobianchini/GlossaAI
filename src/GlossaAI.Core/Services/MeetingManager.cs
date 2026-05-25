@@ -65,20 +65,21 @@ public class MeetingManager(
 
     private ILLMProvider ActiveLlm => _llmProviderFactory.GetProvider(_settings.SelectedProvider);
 
-    public async Task<string> ProcessMeetingAsync(string audioPath, CancellationToken cancellationToken = default)
+    public async Task<string> ProcessMeetingAsync(string audioPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
-        var (_, recap) = await ProcessMeetingWithTranscriptAsync(audioPath, cancellationToken);
+        var (_, recap) = await ProcessMeetingWithTranscriptAsync(audioPath, progress, cancellationToken);
         return recap;
     }
 
-    public async Task<(string Transcription, string Recap)> ProcessMeetingWithTranscriptAsync(string audioPath, CancellationToken cancellationToken = default)
+    public async Task<(string Transcription, string Recap)> ProcessMeetingWithTranscriptAsync(string audioPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(audioPath))
             throw new ArgumentException("Audio file path cannot be null or empty.", nameof(audioPath));
 
         // Whisper runs independently of the recording lifecycle — always use None here
         // so that a recording shutdown cancellation never bleeds into transcription.
-        var transcription = await _sttProvider.TranscribeAudioAsync(audioPath, _settings.RecLangCode, CancellationToken.None);
+        progress?.Report("Initializing transcription...");
+        var transcription = await _sttProvider.TranscribeAudioAsync(audioPath, _settings.RecLangCode, progress, CancellationToken.None);
 
         if (string.IsNullOrWhiteSpace(transcription))
         {
@@ -92,6 +93,7 @@ public class MeetingManager(
             throw new NoSpeechException("audio recording");
         }
 
+        progress?.Report("Analyzing transcription and generating summary...");
         var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt);
         return (transcription, recap);
     }
@@ -121,7 +123,7 @@ public class MeetingManager(
             progress?.Report("Transcribing voice activity...");
 
             // Whisper is isolated from the caller's token — pass None explicitly.
-            var transcription = await _sttProvider.TranscribeAudioAsync(tempAudioPath, _settings.RecLangCode, CancellationToken.None);
+            var transcription = await _sttProvider.TranscribeAudioAsync(tempAudioPath, _settings.RecLangCode, progress, CancellationToken.None);
 
             if (string.IsNullOrWhiteSpace(transcription))
             {

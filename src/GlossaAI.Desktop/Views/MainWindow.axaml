@@ -257,6 +257,9 @@
                                 <Button Classes="neutral" Command="{Binding SelectAndProcessVideoCommand}" IsEnabled="{Binding !IsRecording}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
                                     <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="📁"/><TextBlock Text="Import Media"/></StackPanel>
                                 </Button>
+                                <Button Classes="danger" Command="{Binding RetryProcessCommand}" IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" ToolTip.Tip="Retry the previous processing step">
+                                    <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="🔄"/><TextBlock Text="Try Again"/></StackPanel>
+                                </Button>
                             </StackPanel>
                         </Grid>
 

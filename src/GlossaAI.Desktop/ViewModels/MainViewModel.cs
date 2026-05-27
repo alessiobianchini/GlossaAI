@@ -37,6 +37,10 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool   _isProcessing;
     [ObservableProperty] private string _statusText    = "Ready";
     [ObservableProperty] private string _statusMessage = string.Empty;
+
+    [ObservableProperty] private string? _lastFilePath;
+    [ObservableProperty] private bool _lastWasVideo;
+
     [ObservableProperty] private double _micLevel;
     [ObservableProperty] private double _desktopLevel;
 
@@ -360,6 +364,9 @@ public partial class MainViewModel : ViewModelBase
             IsRecording = _audioEngine.IsRecording;
 
             var file = Path.Combine(Path.GetTempPath(), "GlossaAI_Meeting_Capture.wav");
+            LastFilePath = file;
+            LastWasVideo = false;
+
             var progress = new Progress<string>(s => StatusText = s);
             
             AiRecapText = string.Empty;
@@ -387,10 +394,69 @@ public partial class MainViewModel : ViewModelBase
             ErrorMessage = msg;
             RecapText    = msg;
             StatusText   = "No speech detected.";
+            StatusMessage = "No speech detected. You can try again if you think this is an error.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during stop/process.");
+            StatusText    = "Error during processing.";
+            StatusMessage = ex.Message;
+        }
+        finally { IsProcessing = false; }
+    }
+
+    [RelayCommand]
+    private async Task RetryProcessAsync()
+    {
+        if (string.IsNullOrEmpty(LastFilePath)) return;
+        
+        IsProcessing = true;
+        StatusMessage = string.Empty;
+        ErrorMessage = string.Empty;
+        RecapText = "Retrying process...";
+
+        var progress = new Progress<string>(s => StatusText = s);
+        
+        AiRecapText = string.Empty;
+        RecapText = string.Empty;
+        var recapProgress = new Progress<string>(s => 
+        {
+            AiRecapText += s;
+            RecapText = AiRecapText
+                .Replace("<think>", "🧠 RAGIONAMENTO IN CORSO...\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+                .Replace("</think>", "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🎯 RISPOSTA FINALE:\n");
+        });
+
+        try
+        {
+            (string transcription, string recap) result;
+            if (LastWasVideo)
+            {
+                result = await _meetingManager.ProcessVideoMeetingWithTranscriptAsync(LastFilePath, progress, recapProgress, System.Threading.CancellationToken.None);
+            }
+            else
+            {
+                result = await _meetingManager.ProcessMeetingWithTranscriptAsync(LastFilePath, progress, recapProgress, System.Threading.CancellationToken.None);
+            }
+
+            TranscriptionText = result.transcription;
+            AiRecapText       = result.recap;
+            RecapText         = result.recap;
+            StatusText        = "Processing completed.";
+
+            await SaveMeetingToHistoryAsync(result.transcription, result.recap);
+        }
+        catch (NoSpeechException)
+        {
+            const string msg = "### Transcription Error\nNo speech could be extracted or transcribed from the audio file.";
+            ErrorMessage = msg;
+            RecapText    = msg;
+            StatusText   = "No speech detected.";
+            StatusMessage = "No speech detected. You can try again if you think this is an error.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during retry process.");
             StatusText    = "Error during processing.";
             StatusMessage = ex.Message;
         }
@@ -424,6 +490,9 @@ public partial class MainViewModel : ViewModelBase
             StatusMessage = string.Empty;
             ErrorMessage  = string.Empty;
             RecapText     = "Video loaded. Extracting audio...";
+            
+            LastFilePath = result[0].Path.LocalPath;
+            LastWasVideo = true;
 
             var progress = new Progress<string>(s => StatusText = s);
             
@@ -452,6 +521,7 @@ public partial class MainViewModel : ViewModelBase
             ErrorMessage = msg;
             RecapText    = msg;
             StatusText   = "No speech detected.";
+            StatusMessage = "No speech detected. You can try again if you think this is an error.";
         }
         catch (Exception ex)
         {

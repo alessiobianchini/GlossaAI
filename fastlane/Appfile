@@ -1,0 +1,4 @@
+app_identifier(ENV["APP_IDENTIFIER"] || "it.alessiobianchini.glossaai")
+apple_id(ENV["APPLE_ID"] || "your-apple-id@example.com")
+team_id(ENV["APPLE_DEVELOPER_TEAM_ID"] || "SK68SF94T9")
+itc_team_id(ENV["APP_STORE_CONNECT_TEAM_ID"] || "")

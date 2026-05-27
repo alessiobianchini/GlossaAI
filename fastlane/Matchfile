@@ -1,0 +1,13 @@
+match_git_url = ENV["MATCH_GIT_URL"] || "https://github.com/alessiobianchini/glossa-certificates.git"
+
+if match_git_url&.start_with?("git@github.com:")
+  match_git_url = match_git_url.sub("git@github.com:", "https://github.com/")
+elsif match_git_url&.start_with?("ssh://git@github.com/")
+  match_git_url = match_git_url.sub("ssh://git@github.com/", "https://github.com/")
+end
+
+git_url(match_git_url)
+storage_mode("git")
+type("appstore")
+app_identifier([ENV["APP_IDENTIFIER"] || "it.alessiobianchini.glossaai"])
+username(ENV["APPLE_ID"] || "your-apple-id@example.com")

@@ -6,7 +6,7 @@ options:
 packages:
   MLXSwiftLM:
     url: https://github.com/ml-explore/mlx-swift-lm
-    from: "0.1.0"
+    from: "3.0.0"
 targets:
   GlossaAI:
     type: application

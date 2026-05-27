@@ -108,18 +108,23 @@ public partial class MainViewModel : ViewModelBase
         _ = CheckForUpdatesAsync();
     }
 
+    [RelayCommand]
     private async Task CheckForUpdatesAsync()
     {
         var (available, newVersion, url) = await _updateService.CheckForUpdatesAsync();
-        if (available)
+        Dispatcher.UIThread.Post(() =>
         {
-            Dispatcher.UIThread.Post(() =>
+            if (available)
             {
                 NewVersionName = newVersion;
                 _updateDownloadUrl = url;
                 IsUpdateAvailable = true;
-            });
-        }
+            }
+            else
+            {
+                IsUpdateAvailable = false;
+            }
+        });
     }
 
     [RelayCommand]

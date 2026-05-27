@@ -87,7 +87,7 @@ public class OpenAiProvider : ILLMProvider
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to call OpenAI server at '{ApiUrl}'.", apiUrl);
-            return $"### Error generating recap via OpenAI\nCould not communicate with OpenAI: {ex.Message}\n\n*Please verify your API key and settings configuration.*";
+            throw new InvalidOperationException($"Could not communicate with OpenAI: {ex.Message}. Please verify your API key and settings configuration.", ex);
         }
     }
 

@@ -69,12 +69,12 @@ public class OllamaProvider : ILLMProvider
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "OllamaProvider: Request timed out or cancelled.");
-            return $"### Error generating recap\nCould not communicate with Ollama: The request was canceled.\n\n*Please ensure Ollama is running and has model '{_settings.SelectedModel}' loaded.*";
+            throw new InvalidOperationException($"Could not communicate with Ollama: The request was canceled. Please ensure Ollama is running and has model '{_settings.SelectedModel}' loaded.", ex);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "OllamaProvider: Request failed.");
-            return $"### Error generating recap\nCould not communicate with Ollama: {ex.Message}\n\n*Please ensure Ollama is running and has model '{_settings.SelectedModel}' loaded.*";
+            throw new InvalidOperationException($"Could not communicate with Ollama: {ex.Message}. Please ensure Ollama is running and has model '{_settings.SelectedModel}' loaded.", ex);
         }
     }
 

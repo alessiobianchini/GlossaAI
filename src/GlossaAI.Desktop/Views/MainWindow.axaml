@@ -367,6 +367,14 @@
                                     </Grid>
                                 </StackPanel>
 
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="UPDATES" FontSize="11" FontWeight="Bold" Foreground="#64748B" LetterSpacing="1"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Button Classes="primary" Command="{Binding CheckForUpdatesCommand}" Content="Check for Updates" Padding="16,8"/>
+                                        <TextBlock Text="No updates available." IsVisible="{Binding !IsUpdateAvailable}" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+
                             </StackPanel>
                         </ScrollViewer>
                     </Border>

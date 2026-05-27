@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import MLX
-import MLXRandom
 import MLXLLM
 
 class LLMService: ObservableObject {

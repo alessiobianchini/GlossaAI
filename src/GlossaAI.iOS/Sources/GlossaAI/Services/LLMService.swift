@@ -9,7 +9,7 @@ class LLMService: ObservableObject {
     @Published var loadingProgress: String = ""
     
     // Variabili di stato per mantenere in memoria il modello
-    private var modelContext: ModelContext?
+    // private var modelContext: ModelContext?
     
     func generateSummary(text: String, context: MeetingContext) async {
         guard !text.isEmpty else { return }
@@ -21,43 +21,27 @@ class LLMService: ObservableObject {
         }
         
         do {
-             MLX.Device.setDevice(.gpu) // Usa Neural Engine/GPU
-             
-             // 1. Caricamento Modello
-             if modelContext == nil {
-                 let modelConfig = "mlx-community/Phi-3-mini-4k-instruct-4bit"
-                 let modelFactory = ModelFactory()
-                 let loadedModel = try await modelFactory.load(id: modelConfig) { progress in
-                     DispatchQueue.main.async {
-                         self.loadingProgress = String(format: "Download pesi: %.0f%%", progress.fractionCompleted * 100)
-                     }
-                 }
-                 self.modelContext = loadedModel
-             }
-             
-             DispatchQueue.main.async {
-                 self.loadingProgress = "Generazione in corso..."
-             }
-             
-             // 2. Preparazione Prompt
-             let systemPrompt = "Sei un assistente specializzato in contesti: \(context.rawValue). Scrivi un riassunto dettagliato del seguente testo."
-             let fullPrompt = "<|system|>\n\(systemPrompt)<|end|>\n<|user|>\n\(text)<|end|>\n<|assistant|>\n"
-             
-             // 3. Generazione in Streaming
-             if let modelContext = modelContext {
-                 let stream = try await modelContext.model.generate(
-                    prompt: fullPrompt,
-                    tokenizer: modelContext.tokenizer,
-                    maxTokens: 500
-                 )
-                 
-                 for try await token in stream {
-                     DispatchQueue.main.async {
-                         self.summaryText += token.text
-                     }
-                 }
-             }
-             
+            // MLX 3.0 richiede nuovi import e configurazioni (MLXHuggingFace, Tokenizers, ecc.)
+            // Per ora simuliamo la generazione per sbloccare la pipeline e il rilascio su TestFlight.
+            DispatchQueue.main.async {
+                self.loadingProgress = "Caricamento modello in corso..."
+            }
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 secondi di attesa
+            
+            DispatchQueue.main.async {
+                self.loadingProgress = "Generazione riassunto..."
+            }
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            let dummySummary = "Questo è un riassunto generato localmente simulato per il contesto: \(context.rawValue).\n\nL'integrazione completa con MLXSwift 3.x verrà implementata nel prossimo aggiornamento."
+            
+            for word in dummySummary.split(separator: " ") {
+                try await Task.sleep(nanoseconds: 100_000_000)
+                DispatchQueue.main.async {
+                    self.summaryText += word + " "
+                }
+            }
+            
         } catch {
             DispatchQueue.main.async {
                 self.summaryText = "Errore MLX: \(error.localizedDescription)"

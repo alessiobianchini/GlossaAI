@@ -34,18 +34,15 @@ platform :ios do
       git_basic_authorization: ENV.fetch("MATCH_GIT_BASIC_AUTHORIZATION")
     )
 
+    # Disabilita l'inserimento automatico del mapping nei parametri globali CLI di xcodebuild 
+    # per evitare che venga applicato ai pacchetti SPM. Lo abbiamo impostato nel project.yml
+    ENV["MATCH_PROVISIONING_PROFILE_MAPPING"] = "{}"
+
     build_app(
       project: project_path,
       scheme: "GlossaAI",
       clean: true,
-      export_method: "app-store",
-      xcargs: [
-        "CODE_SIGN_STYLE=Manual",
-        "DEVELOPMENT_TEAM=#{ENV.fetch("APPLE_DEVELOPER_TEAM_ID")}",
-        "CODE_SIGN_IDENTITY='Apple Distribution'",
-        "PROVISIONING_PROFILE_SPECIFIER=\"match AppStore #{ENV.fetch("APP_IDENTIFIER")}\"",
-        "IPHONEOS_DEPLOYMENT_TARGET=17.0"
-      ].join(" ")
+      export_method: "app-store"
     )
 
     upload_to_testflight(

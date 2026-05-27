@@ -9,4 +9,8 @@ public class MeetingRecord
     public string Title { get; set; } = "Untitled Meeting";
     public string TranscriptionText { get; set; } = string.Empty;
     public string AiRecapText { get; set; } = string.Empty;
+    public string? SourceFilePath { get; set; }
+    public bool WasVideo { get; set; }
+    public bool IsDraft { get; set; } = false;
+    public string Status { get; set; } = "Completed";
 }

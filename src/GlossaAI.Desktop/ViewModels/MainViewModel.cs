@@ -338,10 +338,12 @@ public partial class MainViewModel : ViewModelBase
             _ = _configService.SaveSettingsAsync(_providerSettings);
         }
 
-        var tempFile = Path.Combine(Path.GetTempPath(), "GlossaAI_Meeting_Capture.wav");
+        var tempFile = GetMediaFilePath(".wav");
         try
         {
             _audioEngine.StartRecording(SelectedMicrophone, SelectedDesktopSource, tempFile);
+            LastFilePath = tempFile;
+            LastWasVideo = false;
             IsRecording   = _audioEngine.IsRecording;
             StatusText    = "Recording audio...";
             StatusMessage = string.Empty;
@@ -353,6 +355,13 @@ public partial class MainViewModel : ViewModelBase
             StatusText    = "Unable to start recording.";
             StatusMessage = ex.Message;
         }
+    }
+
+    private string GetMediaFilePath(string extension)
+    {
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlossaAI", "Media");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, $"Capture_{DateTime.Now:yyyyMMdd_HHmmss}{extension}");
     }
 
     [RelayCommand]
@@ -368,9 +377,19 @@ public partial class MainViewModel : ViewModelBase
             _audioEngine.StopRecording();
             IsRecording = _audioEngine.IsRecording;
 
-            var file = Path.Combine(Path.GetTempPath(), "GlossaAI_Meeting_Capture.wav");
-            LastFilePath = file;
-            LastWasVideo = false;
+            var file = LastFilePath!;
+            
+            var draftRecord = new MeetingRecord
+            {
+                Title = $"Meeting {DateTime.Now:g}",
+                SourceFilePath = file,
+                WasVideo = false,
+                IsDraft = true,
+                Status = "Processing..."
+            };
+            PastMeetings.Insert(0, draftRecord);
+            SelectedMeeting = draftRecord;
+            await _historyService.SaveHistoryAsync(PastMeetings.ToList());
 
             var progress = new Progress<string>(s => StatusText = s);
             
@@ -391,7 +410,11 @@ public partial class MainViewModel : ViewModelBase
             RecapText         = recap;
             StatusText        = "Processing completed.";
 
-            await SaveMeetingToHistoryAsync(transcription, recap);
+            draftRecord.TranscriptionText = transcription;
+            draftRecord.AiRecapText = recap;
+            draftRecord.IsDraft = false;
+            draftRecord.Status = "Completed";
+            await _historyService.SaveHistoryAsync(PastMeetings.ToList());
         }
         catch (NoSpeechException)
         {
@@ -400,12 +423,22 @@ public partial class MainViewModel : ViewModelBase
             RecapText    = msg;
             StatusText   = "No speech detected.";
             StatusMessage = "No speech detected. You can try again if you think this is an error.";
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.Status = "Failed (No Speech)";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during stop/process.");
             StatusText    = "Error during processing.";
             StatusMessage = ex.Message;
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.Status = "Failed";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         finally { IsProcessing = false; }
     }
@@ -449,7 +482,14 @@ public partial class MainViewModel : ViewModelBase
             RecapText         = result.recap;
             StatusText        = "Processing completed.";
 
-            await SaveMeetingToHistoryAsync(result.transcription, result.recap);
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.TranscriptionText = result.transcription;
+                SelectedMeeting.AiRecapText = result.recap;
+                SelectedMeeting.IsDraft = false;
+                SelectedMeeting.Status = "Completed";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         catch (NoSpeechException)
         {
@@ -458,12 +498,22 @@ public partial class MainViewModel : ViewModelBase
             RecapText    = msg;
             StatusText   = "No speech detected.";
             StatusMessage = "No speech detected. You can try again if you think this is an error.";
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.Status = "Failed (No Speech)";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during retry process.");
             StatusText    = "Error during processing.";
             StatusMessage = ex.Message;
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.Status = "Failed";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         finally { IsProcessing = false; }
     }
@@ -499,6 +549,18 @@ public partial class MainViewModel : ViewModelBase
             LastFilePath = result[0].Path.LocalPath;
             LastWasVideo = true;
 
+            var draftRecord = new MeetingRecord
+            {
+                Title = $"Imported Media {DateTime.Now:g}",
+                SourceFilePath = LastFilePath,
+                WasVideo = true,
+                IsDraft = true,
+                Status = "Processing..."
+            };
+            PastMeetings.Insert(0, draftRecord);
+            SelectedMeeting = draftRecord;
+            await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+
             var progress = new Progress<string>(s => StatusText = s);
             
             AiRecapText = string.Empty;
@@ -518,7 +580,11 @@ public partial class MainViewModel : ViewModelBase
             RecapText         = recap;
             StatusText        = "Processing complete.";
 
-            await SaveMeetingToHistoryAsync(transcription, recap);
+            draftRecord.TranscriptionText = transcription;
+            draftRecord.AiRecapText = recap;
+            draftRecord.IsDraft = false;
+            draftRecord.Status = "Completed";
+            await _historyService.SaveHistoryAsync(PastMeetings.ToList());
         }
         catch (NoSpeechException)
         {
@@ -527,6 +593,11 @@ public partial class MainViewModel : ViewModelBase
             RecapText    = msg;
             StatusText   = "No speech detected.";
             StatusMessage = "No speech detected. You can try again if you think this is an error.";
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.Status = "Failed (No Speech)";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         catch (Exception ex)
         {
@@ -534,6 +605,11 @@ public partial class MainViewModel : ViewModelBase
             StatusText    = "Error during processing.";
             StatusMessage = ex.Message;
             RecapText     = $"Could not complete video recap:\n{ex.Message}";
+            if (SelectedMeeting != null)
+            {
+                SelectedMeeting.Status = "Failed";
+                await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+            }
         }
         finally { IsProcessing = false; }
     }
@@ -547,7 +623,28 @@ public partial class MainViewModel : ViewModelBase
         {
             SelectedMeeting = PastMeetings.FirstOrDefault();
         }
+        
+        if (!string.IsNullOrEmpty(record.SourceFilePath) && File.Exists(record.SourceFilePath))
+        {
+            try { File.Delete(record.SourceFilePath); } catch { /* Ignore */ }
+        }
+
         await _historyService.SaveHistoryAsync(PastMeetings.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ResumeMeetingAsync(MeetingRecord record)
+    {
+        if (record == null || string.IsNullOrEmpty(record.SourceFilePath)) return;
+        
+        SelectedMeeting = record;
+        LastFilePath = record.SourceFilePath;
+        LastWasVideo = record.WasVideo;
+        
+        // Switch to main tab
+        SwitchTab("0");
+        
+        await RetryProcessAsync();
     }
 
     // ── Translation ─────────────────────────────────────────────────────────────

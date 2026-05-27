@@ -252,6 +252,9 @@ public partial class MainViewModel : ViewModelBase
             Microphones.Clear();
             DesktopSources.Clear();
 
+            Microphones.Add(new AudioDevice("NONE", "None (Disabled)", DeviceType.Microphone));
+            DesktopSources.Add(new AudioDevice("NONE", "None (Disabled)", DeviceType.DesktopLoopback));
+
             foreach (var device in devices)
             {
                 if (device.Type == DeviceType.Microphone)           
@@ -300,12 +303,8 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private async Task StartRecordingAsync()
+    private async Task<bool> ShowSetupDialogAsync()
     {
-        if (IsRecording || IsProcessing) return;
-
-        RecordingConfig? config = null;
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow is { } parent)
         {
             if (!parent.IsVisible || parent.WindowState == Avalonia.Controls.WindowState.Minimized)
@@ -317,11 +316,8 @@ public partial class MainViewModel : ViewModelBase
 
             var dialogViewModel = new RecordSetupViewModel(_providerSettings);
             var dialog = new Views.RecordSetupDialog { DataContext = dialogViewModel };
-            config = await dialog.ShowDialog<RecordingConfig?>(parent);
-            if (config == null)
-            {
-                return;
-            }
+            var config = await dialog.ShowDialog<RecordingConfig?>(parent);
+            if (config == null) return false;
 
             var matchInput = dialogViewModel.AvailableLanguages.FirstOrDefault(l => l.Code.Equals(config.InputLanguage, StringComparison.OrdinalIgnoreCase));
             var matchOutput = dialogViewModel.AvailableLanguages.FirstOrDefault(l => l.Code.Equals(config.OutputLanguage, StringComparison.OrdinalIgnoreCase));
@@ -330,18 +326,29 @@ public partial class MainViewModel : ViewModelBase
             _meetingManager.UpdateRecordingConfig(config.SelectedModel, config.InputLanguage, outputLanguageName, config.Context);
 
             Settings.SelectedModel = config.SelectedModel;
-            if (matchInput != null)
-                Settings.RecLang = matchInput;
-            if (matchOutput != null)
-                Settings.OutLang = matchOutput;
+            if (matchInput != null) Settings.RecLang = matchInput;
+            if (matchOutput != null) Settings.OutLang = matchOutput;
 
             _ = _configService.SaveSettingsAsync(_providerSettings);
+            return true;
         }
+        return false;
+    }
+
+    [RelayCommand]
+    private async Task StartRecordingAsync()
+    {
+        if (IsRecording || IsProcessing) return;
+
+        if (!await ShowSetupDialogAsync()) return;
 
         var tempFile = GetMediaFilePath(".wav");
         try
         {
-            _audioEngine.StartRecording(SelectedMicrophone, SelectedDesktopSource, tempFile);
+            var micDevice = SelectedMicrophone?.Id == "NONE" ? null : SelectedMicrophone;
+            var deskDevice = SelectedDesktopSource?.Id == "NONE" ? null : SelectedDesktopSource;
+            
+            _audioEngine.StartRecording(micDevice, deskDevice, tempFile);
             LastFilePath = tempFile;
             LastWasVideo = false;
             IsRecording   = _audioEngine.IsRecording;
@@ -540,6 +547,12 @@ public partial class MainViewModel : ViewModelBase
             });
 
             if (result.Count == 0) { StatusText = "No file selected."; return; }
+            
+            if (!await ShowSetupDialogAsync())
+            {
+                StatusText = "Import cancelled.";
+                return;
+            }
 
             IsProcessing  = true;
             StatusMessage = string.Empty;

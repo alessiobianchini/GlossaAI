@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "The app needs microphone access to record meetings.";
+"NSSpeechRecognitionUsageDescription" = "The app needs speech recognition to transcribe audio.";

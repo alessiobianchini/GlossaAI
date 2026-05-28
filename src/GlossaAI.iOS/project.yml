@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.alessiobianchini
   deploymentTarget:
     iOS: 17.0
+  developmentLanguage: en
 packages:
   MLXSwiftLM:
     url: https://github.com/ml-explore/mlx-swift-lm
@@ -33,8 +34,6 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Distribution"
         DEVELOPMENT_TEAM: SK68SF94T9
         PRODUCT_BUNDLE_IDENTIFIER: it.alessiobianchini.glossaai
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "L'app necessita dell'accesso al microfono per registrare i meeting."
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "L'app necessita del riconoscimento vocale per trascrivere l'audio."
     dependencies:
       - package: MLXSwiftLM
         product: MLXLLM

@@ -18,4 +18,15 @@ enum MeetingLanguage: String, CaseIterable, Identifiable {
         case .german: return "de-DE"
         }
     }
+    
+    static func defaultForSystem() -> MeetingLanguage {
+        let langCode = Locale.current.language.languageCode?.identifier ?? "en"
+        switch langCode {
+        case "it": return .italian
+        case "es": return .spanish
+        case "fr": return .french
+        case "de": return .german
+        default: return .english
+        }
+    }
 }

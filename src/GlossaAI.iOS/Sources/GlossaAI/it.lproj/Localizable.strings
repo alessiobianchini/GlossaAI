@@ -1,0 +1,13 @@
+"Meeting Context" = "Contesto Meeting";
+"Language" = "Lingua";
+"Live Transcription" = "Trascrizione Live";
+"Waiting for audio..." = "In attesa di audio...";
+"Processing file..." = "Elaborazione file in corso...";
+"AI Summary" = "Riassunto AI";
+"Summarize" = "Riassumi";
+"Import" = "Importa";
+"Error transcribing file: %@" = "Errore durante la trascrizione del file: %@";
+"Unable to start recognition." = "Impossibile avviare il riconoscimento.";
+"MLX Error: %@" = "Errore MLX: %@";
+"Loading model..." = "Caricamento modello in corso...";
+"Generating summary..." = "Generazione riassunto...";

@@ -142,7 +142,8 @@ class SpeechRecognizer: ObservableObject {
                     DispatchQueue.main.async {
                         self.isTranscribingFile = false
                         if let error = error {
-                            self.transcribedText = "Errore durante la trascrizione del file: \(error.localizedDescription)"
+                            let formatString = String(localized: "Error transcribing file: %@")
+                            self.transcribedText = String(format: formatString, error.localizedDescription)
                         }
                     }
                     continuation.resume()
@@ -153,7 +154,7 @@ class SpeechRecognizer: ObservableObject {
             if recognitionTask == nil {
                 DispatchQueue.main.async {
                     self.isTranscribingFile = false
-                    self.transcribedText = "Impossibile avviare il riconoscimento."
+                    self.transcribedText = String(localized: "Unable to start recognition.")
                 }
                 continuation.resume()
             }

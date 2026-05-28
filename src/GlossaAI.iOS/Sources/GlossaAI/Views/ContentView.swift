@@ -6,7 +6,7 @@ struct ContentView: View {
     @StateObject private var llmService = LLMService()
     
     @State private var selectedContext: MeetingContext = .general
-    @State private var selectedLanguage: MeetingLanguage = .italian
+    @State private var selectedLanguage: MeetingLanguage = MeetingLanguage.defaultForSystem()
     @State private var showFilePicker = false
     
     // Branding Colors
@@ -128,14 +128,14 @@ struct ContentView: View {
                                 HStack {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: brandSecondary))
-                                    Text("Elaborazione file in corso...")
+                                    Text("Processing file...")
                                         .foregroundColor(.gray)
                                         .padding(.leading, 8)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 8)
                             } else {
-                                Text(speechRecognizer.transcribedText.isEmpty ? "In attesa di audio..." : speechRecognizer.transcribedText)
+                                Text(speechRecognizer.transcribedText.isEmpty ? "Waiting for audio..." : speechRecognizer.transcribedText)
                                     .font(.system(size: 15, weight: .regular, design: .default))
                                     .foregroundColor(.white.opacity(0.9))
                                     .frame(maxWidth: .infinity, alignment: .leading)

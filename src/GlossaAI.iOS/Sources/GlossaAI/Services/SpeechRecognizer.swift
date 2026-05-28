@@ -5,11 +5,16 @@ import Speech
 class SpeechRecognizer: ObservableObject {
     @Published var transcribedText = ""
     @Published var isRecording = false
+    @Published var isTranscribingFile = false
     
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "it-IT"))
+    private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "it-IT"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+    
+    func setLocale(identifier: String) {
+        speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: identifier))
+    }
     
     func requestAuthorization() {
         SFSpeechRecognizer.requestAuthorization { authStatus in
@@ -105,6 +110,53 @@ class SpeechRecognizer: ObservableObject {
         
         DispatchQueue.main.async {
             self.isRecording = false
+        }
+    }
+    
+    // File transcription
+    func transcribeFile(url: URL) async {
+        DispatchQueue.main.async {
+            self.isTranscribingFile = true
+            self.transcribedText = ""
+        }
+        
+        let request = SFSpeechURLRecognitionRequest(url: url)
+        request.shouldReportPartialResults = true
+        
+        // Since we await the completion block natively using continuations is possible, 
+        // but SFSpeechRecognizer uses a closure-based callback that returns multiple times.
+        // We'll wrap it and wait for the final result.
+        
+        await withCheckedContinuation { continuation in
+            recognitionTask = speechRecognizer?.recognitionTask(with: request) { result, error in
+                var isFinal = false
+                if let result = result {
+                    DispatchQueue.main.async {
+                        self.transcribedText = result.bestTranscription.formattedString
+                    }
+                    isFinal = result.isFinal
+                }
+                
+                if error != nil || isFinal {
+                    self.recognitionTask = nil
+                    DispatchQueue.main.async {
+                        self.isTranscribingFile = false
+                        if let error = error {
+                            self.transcribedText = "Errore durante la trascrizione del file: \(error.localizedDescription)"
+                        }
+                    }
+                    continuation.resume()
+                }
+            }
+            
+            // If creation failed immediately
+            if recognitionTask == nil {
+                DispatchQueue.main.async {
+                    self.isTranscribingFile = false
+                    self.transcribedText = "Impossibile avviare il riconoscimento."
+                }
+                continuation.resume()
+            }
         }
     }
 }

@@ -3,7 +3,6 @@ import SwiftUI
 import MLX
 import MLXLLM
 import MLXLMCommon
-import MLXHuggingFace
 
 class LLMService: ObservableObject {
     @Published var summaryText = ""
@@ -29,8 +28,6 @@ class LLMService: ObservableObject {
             // Load container only once
             if modelContainer == nil {
                 modelContainer = try await LLMModelFactory.shared.loadContainer(
-                    from: #hubDownloader(),
-                    using: #huggingFaceTokenizerLoader(),
                     configuration: modelConfiguration
                 ) { progress in
                     // We could update progress here if we wanted
@@ -52,25 +49,22 @@ class LLMService: ObservableObject {
             let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
             
             // Generate tokens
-            let _ = try await container.perform { model, tokenizer in
-                let promptTokens = try tokenizer.encode(text: fullPrompt)
+            let _ = try await container.perform { context in
+                let promptTokens = try context.tokenizer.encode(text: fullPrompt)
                 
-                let _ = try MLXLMCommon.generate(
+                let _ = try MLXLLM.generate(
                     promptTokens: promptTokens,
                     parameters: GenerateParameters(temperature: 0.6),
-                    model: model,
-                    tokenizer: tokenizer,
-                    extraEOSTokens: Set<String>(),
-                    didGenerate: { tokens in
-                        // Decode incrementally
-                        if let newText = tokenizer.decode(tokenIds: tokens) {
-                            Task { @MainActor in
-                                self.summaryText = newText
-                            }
+                    context: context
+                ) { tokens in
+                    // Decode incrementally
+                    if let newText = context.tokenizer.decode(tokens: tokens) {
+                        Task { @MainActor in
+                            self.summaryText = newText
                         }
-                        return .more
                     }
-                )
+                    return .more
+                }
             }
             
         } catch {

@@ -7,7 +7,7 @@ options:
 packages:
   MLXSwiftLM:
     url: https://github.com/ml-explore/mlx-swift-lm
-    from: "3.0.0"
+    from: "0.12.1"
 targets:
   GlossaAI:
     type: application
@@ -38,4 +38,6 @@ targets:
       - package: MLXSwiftLM
         product: MLXLLM
       - package: MLXSwiftLM
-        product: MLXHuggingFace
+        product: MLXLMCommon
+      - package: MLXSwiftLM
+        product: MLXRandom

@@ -41,3 +41,5 @@ targets:
         product: MLXLMCommon
       - package: MLXSwiftLM
         product: MLXRandom
+      - package: MLXSwiftLM
+        product: MLXHuggingFace

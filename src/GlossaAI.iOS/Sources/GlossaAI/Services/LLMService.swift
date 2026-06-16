@@ -4,6 +4,7 @@ import MLX
 import MLXLLM
 import MLXLMCommon
 import MLXRandom
+import MLXHuggingFace
 
 class LLMService: ObservableObject {
     @Published var summaryText = ""
@@ -19,7 +20,7 @@ class LLMService: ObservableObject {
     func generateSummary(text: String, context: MeetingContext) async {
         guard !text.isEmpty else { return }
         
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isProcessing = true
             self.summaryText = ""
             self.loadingProgress = String(localized: "Loading model...")
@@ -28,7 +29,11 @@ class LLMService: ObservableObject {
         do {
             // Load container only once
             if modelContainer == nil {
-                modelContainer = try await LLMModelFactory.shared.loadContainer(configuration: modelConfiguration) { progress in
+                modelContainer = try await LLMModelFactory.shared.loadContainer(
+                    from: #hubDownloader(),
+                    using: #huggingFaceTokenizerLoader(),
+                    configuration: modelConfiguration
+                ) { progress in
                     // We could update progress here if we wanted
                 }
             }
@@ -37,7 +42,7 @@ class LLMService: ObservableObject {
                 throw NSError(domain: "LLMService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model container not initialized"])
             }
             
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.loadingProgress = String(localized: "Generating summary...")
             }
             
@@ -48,17 +53,19 @@ class LLMService: ObservableObject {
             let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
             
             // Generate tokens
-            let _ = try await container.perform { context in
-                let promptTokens = try context.tokenizer.encode(text: fullPrompt)
+            let _ = try await container.perform { model, tokenizer in
+                let promptTokens = try tokenizer.encode(text: fullPrompt)
                 
                 let _ = try MLXLLM.generate(
                     promptTokens: promptTokens,
                     parameters: GenerateParameters(temperature: 0.6),
-                    context: context
+                    model: model,
+                    tokenizer: tokenizer,
+                    extraTokens: Set()
                 ) { tokens in
                     // Decode incrementally
-                    if let newText = context.tokenizer.decode(tokens: tokens) {
-                        DispatchQueue.main.async {
+                    if let newText = tokenizer.decode(tokens: tokens) {
+                        Task { @MainActor in
                             self.summaryText = newText
                         }
                     }
@@ -67,13 +74,13 @@ class LLMService: ObservableObject {
             }
             
         } catch {
-            DispatchQueue.main.async {
+            await MainActor.run {
                 let formatString = String(localized: "MLX Error: %@")
                 self.summaryText = String(format: formatString, error.localizedDescription)
             }
         }
         
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isProcessing = false
             self.loadingProgress = ""
         }

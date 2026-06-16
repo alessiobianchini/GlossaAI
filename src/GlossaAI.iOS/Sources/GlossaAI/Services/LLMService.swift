@@ -4,7 +4,6 @@ import MLX
 import MLXLLM
 import MLXLMCommon
 import MLXRandom
-import MLXHuggingFace
 
 class LLMService: ObservableObject {
     @Published var summaryText = ""

@@ -3,7 +3,7 @@ import SwiftUI
 import MLX
 import MLXLLM
 import MLXLMCommon
-import Hub
+import HuggingFace
 import Tokenizers
 
 // MARK: - MLXLMCommon Protocol Bridges
@@ -20,12 +20,10 @@ struct HubDownloaderBridge: MLXLMCommon.Downloader {
         useLatest: Bool,
         progressHandler: @Sendable @escaping (Foundation.Progress) -> Void
     ) async throws -> URL {
-        let repo = Hub.Repo(id: id)
-
-        return try await Hub.snapshot(
-            from: repo,
-            matching: patterns,
-            revision: revision ?? "main"
+        return try await HubClient.default.downloadSnapshot(
+            of: id,
+            revision: revision,
+            matching: patterns
         ) { progress in
             progressHandler(progress)
         }

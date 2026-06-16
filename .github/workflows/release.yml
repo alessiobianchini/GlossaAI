@@ -47,11 +47,22 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Extract version
+        id: extract_version
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          if [ -z "$VERSION" ]; then
+            VERSION="1.0.0"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Publish standalone application
-        run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o ./publish/${{ matrix.rid }}
+        run: dotnet publish src/GlossaAI.Desktop/GlossaAI.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o ./publish/${{ matrix.rid }} -p:Version=${{ env.APP_VERSION }}
 
       - name: Setup FFmpeg (Windows)
         if: matrix.os == 'windows-latest'
@@ -95,14 +106,10 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
-          $version = if ($tag -and $tag.StartsWith('v')) { $tag.Substring(1) } else { $tag }
-          if (-not $version) { $version = "1.0.2" }
-          
           $issContent = @"
           [Setup]
           AppName=GlossaAI
-          AppVersion=$version
+          AppVersion=${{ env.APP_VERSION }}
           AppMutex=Global\GlossaAI.Desktop.UniqueMutex
           DefaultDirName={autopf}\GlossaAI
           DefaultGroupName=GlossaAI

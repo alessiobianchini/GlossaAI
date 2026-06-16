@@ -231,7 +231,7 @@ struct ContentView: View {
                             .disabled(speechRecognizer.isTranscribingFile)
                         }
                         
-                        // Summarize Button
+                        // Summarize & Diarize Buttons
                         if !speechRecognizer.isRecording && !speechRecognizer.transcribedText.isEmpty {
                             VStack(spacing: 8) {
                                 if !llmService.loadingProgress.isEmpty {
@@ -241,29 +241,55 @@ struct ContentView: View {
                                         .animation(.default, value: llmService.loadingProgress)
                                 }
                                 
-                                Button(action: generateSummary) {
-                                    HStack {
-                                        if llmService.isProcessing {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                                .padding(.trailing, 4)
-                                        } else {
-                                            Image(systemName: "wand.and.stars")
+                                HStack(spacing: 12) {
+                                    Button(action: formatSpeakers) {
+                                        HStack {
+                                            if llmService.isProcessing {
+                                                ProgressView()
+                                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                    .padding(.trailing, 4)
+                                            } else {
+                                                Image(systemName: "person.2.wave.2")
+                                            }
+                                            Text("Format Speakers")
+                                                .fontWeight(.bold)
                                         }
-                                        Text("Summarize")
-                                            .fontWeight(.bold)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                        .background(
+                                            LinearGradient(gradient: Gradient(colors: [brandSecondary, brandAccent]), startPoint: .leading, endPoint: .trailing)
+                                        )
+                                        .cornerRadius(25)
+                                        .shadow(color: brandSecondary.opacity(0.5), radius: 10, x: 0, y: 5)
                                     }
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        LinearGradient(gradient: Gradient(colors: [brandAccent, brandSecondary]), startPoint: .leading, endPoint: .trailing)
-                                    )
-                                    .cornerRadius(25)
-                                    .shadow(color: brandAccent.opacity(0.5), radius: 10, x: 0, y: 5)
+                                    .disabled(llmService.isProcessing)
+                                    
+                                    Button(action: generateSummary) {
+                                        HStack {
+                                            if llmService.isProcessing {
+                                                ProgressView()
+                                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                    .padding(.trailing, 4)
+                                            } else {
+                                                Image(systemName: "wand.and.stars")
+                                            }
+                                            Text("Summarize")
+                                                .fontWeight(.bold)
+                                        }
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                        .background(
+                                            LinearGradient(gradient: Gradient(colors: [brandAccent, brandSecondary]), startPoint: .leading, endPoint: .trailing)
+                                        )
+                                        .cornerRadius(25)
+                                        .shadow(color: brandAccent.opacity(0.5), radius: 10, x: 0, y: 5)
+                                    }
+                                    .disabled(llmService.isProcessing)
                                 }
-                                .disabled(llmService.isProcessing)
                             }
                             .transition(.scale)
                         }
@@ -314,6 +340,19 @@ struct ContentView: View {
         withAnimation(.spring()) {
             Task {
                 await llmService.generateSummary(text: speechRecognizer.transcribedText, context: selectedContext)
+            }
+        }
+    }
+    
+    private func formatSpeakers() {
+        withAnimation(.spring()) {
+            Task {
+                let formatted = await llmService.formatTranscriptWithSpeakers(text: speechRecognizer.transcribedText)
+                if !formatted.isEmpty {
+                    await MainActor.run {
+                        speechRecognizer.transcribedText = formatted
+                    }
+                }
             }
         }
     }

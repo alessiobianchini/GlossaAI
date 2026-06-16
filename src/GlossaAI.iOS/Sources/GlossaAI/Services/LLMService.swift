@@ -169,4 +169,63 @@ class LLMService: ObservableObject {
             self.loadingProgress = ""
         }
     }
+    
+    func formatTranscriptWithSpeakers(text: String) async -> String {
+        guard !text.isEmpty else { return "" }
+        
+        await MainActor.run {
+            self.isProcessing = true
+            self.loadingProgress = String(localized: "Identifying speakers...")
+        }
+        
+        do {
+            if modelContainer == nil {
+                modelContainer = try await LLMModelFactory.shared.loadContainer(
+                    from: HubBridge(HubClient()),
+                    using: TransformersLoader(),
+                    configuration: modelConfiguration
+                ) { _ in }
+            }
+            
+            guard let container = modelContainer else {
+                throw NSError(domain: "LLMService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model container not initialized"])
+            }
+            
+            let systemPrompt = "You are a transcription formatting assistant. Rewrite the following raw audio transcription by assigning Speaker tags (e.g., Speaker A, Speaker B) based on conversational context, turn-taking, and tone. DO NOT summarize the text. DO NOT omit any spoken words. Preserve the original dialogue exactly as spoken, but add speaker labels at the beginning of each conversational turn. Output ONLY the formatted transcript."
+            let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+            
+            var formattedText = ""
+            
+            let _ = try await container.perform { model, tokenizer in
+                let promptTokens = try tokenizer.encode(text: fullPrompt)
+                let _ = try MLXLMCommon.generate(
+                    promptTokens: promptTokens,
+                    parameters: GenerateParameters(temperature: 0.1),
+                    model: model,
+                    tokenizer: tokenizer,
+                    extraEOSTokens: Set<String>(),
+                    didGenerate: { tokens in
+                        if let newText = tokenizer.decode(tokenIds: tokens) {
+                            formattedText = newText
+                        }
+                        return .more
+                    }
+                )
+            }
+            
+            await MainActor.run {
+                self.isProcessing = false
+                self.loadingProgress = ""
+            }
+            
+            return formattedText
+            
+        } catch {
+            await MainActor.run {
+                self.isProcessing = false
+                self.loadingProgress = ""
+            }
+            return text
+        }
+    }
 }

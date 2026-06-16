@@ -95,9 +95,24 @@ public class MeetingManager(
             throw new NoSpeechException("audio recording");
         }
 
+        progress?.Report("Identifying speakers...");
+        var formattingPrompt = """
+            You are a transcription formatting assistant.
+            Rewrite the following raw audio transcription by assigning Speaker tags (e.g., Speaker A, Speaker B) based on conversational context, turn-taking, and tone.
+            DO NOT summarize the text. DO NOT omit any spoken words. Preserve the original dialogue exactly as spoken, but add speaker labels at the beginning of each conversational turn.
+            Output ONLY the formatted transcript.
+            """;
+        var formattedTranscription = await ActiveLlm.SummarizeAsync(transcription, formattingPrompt, null, cancellationToken);
+        
+        // Fallback to raw transcription if formatting fails or returns empty
+        if (string.IsNullOrWhiteSpace(formattedTranscription))
+        {
+            formattedTranscription = transcription;
+        }
+
         progress?.Report("Analyzing transcription and generating summary...");
-        var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt, recapProgress, cancellationToken);
-        return (transcription, recap);
+        var recap = await ActiveLlm.SummarizeAsync(formattedTranscription, SystemPrompt, recapProgress, cancellationToken);
+        return (formattedTranscription, recap);
     }
 
     public async Task<string> ProcessVideoMeetingAsync(string videoPath, IProgress<string>? progress = null, IProgress<string>? recapProgress = null, CancellationToken cancellationToken = default)
@@ -138,9 +153,23 @@ public class MeetingManager(
                 throw new NoSpeechException("video file");
             }
 
+            progress?.Report("Identifying speakers...");
+            var formattingPrompt = """
+                You are a transcription formatting assistant.
+                Rewrite the following raw audio transcription by assigning Speaker tags (e.g., Speaker A, Speaker B) based on conversational context, turn-taking, and tone.
+                DO NOT summarize the text. DO NOT omit any spoken words. Preserve the original dialogue exactly as spoken, but add speaker labels at the beginning of each conversational turn.
+                Output ONLY the formatted transcript.
+                """;
+            var formattedTranscription = await ActiveLlm.SummarizeAsync(transcription, formattingPrompt, null, cancellationToken);
+            
+            if (string.IsNullOrWhiteSpace(formattedTranscription))
+            {
+                formattedTranscription = transcription;
+            }
+
             progress?.Report("Generating summary report...");
-            var recap = await ActiveLlm.SummarizeAsync(transcription, SystemPrompt, recapProgress, cancellationToken);
-            return (transcription, recap);
+            var recap = await ActiveLlm.SummarizeAsync(formattedTranscription, SystemPrompt, recapProgress, cancellationToken);
+            return (formattedTranscription, recap);
         }
         finally
         {

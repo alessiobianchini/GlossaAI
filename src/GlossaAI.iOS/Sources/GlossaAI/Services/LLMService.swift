@@ -3,39 +3,36 @@ import SwiftUI
 import MLX
 import MLXLLM
 import MLXLMCommon
-import HuggingFace
+import Hub
 import Tokenizers
 
-struct HubBridge: MLXLMCommon.Downloader {
-    private let upstream: HuggingFace.HubClient
+// MARK: - MLXLMCommon Protocol Bridges
 
-    init(_ upstream: HuggingFace.HubClient) {
-        self.upstream = upstream
-    }
+/// Bridges HuggingFace Hub's download API to MLXLMCommon.Downloader protocol.
+/// This avoids depending on MLXHuggingFace (which requires Swift Macro compilation
+/// and breaks XcodeGen-based CI builds).
+struct HubDownloaderBridge: MLXLMCommon.Downloader {
 
-    public func download(
+    func download(
         id: String,
         revision: String?,
         matching patterns: [String],
         useLatest: Bool,
         progressHandler: @Sendable @escaping (Foundation.Progress) -> Void
-    ) async throws -> URL {                        
-        guard let repoID = HuggingFace.Repo.ID(rawValue: id) else {
-            throw NSError(domain: "LLMService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid Hugging Face repo ID: \(id)"])
-        }
-        let revision = revision ?? "main"
+    ) async throws -> URL {
+        let repo = Hub.Repo(id: id)
 
-        return try await upstream.downloadSnapshot(
-            of: repoID,
-            revision: revision,
+        return try await Hub.snapshot(
+            from: repo,
             matching: patterns,
-            progressHandler: { @MainActor progress in
-                progressHandler(progress)
-            }
-        )
-    }                    
+            revision: revision ?? "main"
+        ) { progress in
+            progressHandler(progress)
+        }
+    }
 }
 
+/// Bridges swift-transformers' Tokenizer to MLXLMCommon.Tokenizer protocol.
 struct TokenizerBridge: MLXLMCommon.Tokenizer {
     private let upstream: any Tokenizers.Tokenizer
 
@@ -47,7 +44,6 @@ struct TokenizerBridge: MLXLMCommon.Tokenizer {
         upstream.encode(text: text, addSpecialTokens: addSpecialTokens)
     }
 
-    // swift-transformers uses `decode(tokens:)` instead of `decode(tokenIds:)`.
     func decode(tokenIds: [Int], skipSpecialTokens: Bool) -> String {
         upstream.decode(tokens: tokenIds, skipSpecialTokens: skipSpecialTokens)
     }
@@ -80,65 +76,113 @@ struct TokenizerBridge: MLXLMCommon.Tokenizer {
     }
 }
 
-struct TransformersLoader: MLXLMCommon.TokenizerLoader {
-    public init() {}
-
-    public func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
+/// Loads a tokenizer from a local directory using swift-transformers' AutoTokenizer,
+/// then wraps it in our TokenizerBridge.
+struct AutoTokenizerLoader: MLXLMCommon.TokenizerLoader {
+    func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
         let upstream = try await Tokenizers.AutoTokenizer.from(modelFolder: directory)
         return TokenizerBridge(upstream)
     }
 }
 
+// MARK: - LLM Service
+
+@MainActor
 class LLMService: ObservableObject {
     @Published var summaryText = ""
     @Published var isProcessing = false
     @Published var loadingProgress: String = ""
-    
-    // MLX 3.0 Model Container
+
     private var modelContainer: ModelContainer?
-    
-    // We choose Llama-3.2-1B-Instruct-4bit as it's lightweight for iOS
     private let modelConfiguration = ModelConfiguration(id: "mlx-community/Llama-3.2-1B-Instruct-4bit")
-    
+
+    // Shared bridges (created once, reused across calls)
+    private let downloader = HubDownloaderBridge()
+    private let tokenizerLoader = AutoTokenizerLoader()
+
+    // MARK: - Model Loading
+
+    private func ensureModelLoaded() async throws -> ModelContainer {
+        if let container = modelContainer { return container }
+
+        loadingProgress = String(localized: "Loading model...")
+
+        let container = try await LLMModelFactory.shared.loadContainer(
+            from: downloader,
+            using: tokenizerLoader,
+            configuration: modelConfiguration
+        ) { progress in
+            // Progress callback for model download
+        }
+
+        modelContainer = container
+        return container
+    }
+
+    // MARK: - Text Generation (Core)
+
+    private func generate(systemPrompt: String, userContent: String, temperature: Float = 0.6) async throws -> String {
+        let container = try await ensureModelLoaded()
+
+        let fullPrompt = """
+            <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+            \(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+            \(userContent)<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+            """
+
+        var generatedText = ""
+
+        let _ = try await container.perform { model, tokenizer in
+            let promptTokens = try tokenizer.encode(text: fullPrompt)
+
+            let _ = try MLXLMCommon.generate(
+                promptTokens: promptTokens,
+                parameters: GenerateParameters(temperature: temperature),
+                model: model,
+                tokenizer: tokenizer,
+                extraEOSTokens: Set<String>(),
+                didGenerate: { tokens in
+                    if let newText = tokenizer.decode(tokenIds: tokens) {
+                        generatedText = newText
+                    }
+                    return .more
+                }
+            )
+        }
+
+        return generatedText
+    }
+
+    // MARK: - Public API: Summary
+
     func generateSummary(text: String, context: MeetingContext) async {
         guard !text.isEmpty else { return }
-        
-        await MainActor.run {
-            self.isProcessing = true
-            self.summaryText = ""
-            self.loadingProgress = String(localized: "Loading model...")
-        }
-        
+
+        isProcessing = true
+        summaryText = ""
+        loadingProgress = String(localized: "Loading model...")
+
         do {
-            // Load container only once
-            if modelContainer == nil {
-                modelContainer = try await LLMModelFactory.shared.loadContainer(
-                    from: HubBridge(HubClient()),
-                    using: TransformersLoader(),
-                    configuration: modelConfiguration
-                ) { progress in
-                    // We could update progress here if we wanted
-                }
-            }
-            
-            guard let container = modelContainer else {
-                throw NSError(domain: "LLMService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model container not initialized"])
-            }
-            
-            await MainActor.run {
-                self.loadingProgress = String(localized: "Generating summary...")
-            }
-            
-            // Format prompt
-            let systemPrompt = "You are an expert AI meeting summarizer. The transcript lacks speaker tags. Try to deduce different speakers from the context (e.g. Speaker A, Speaker B) and reconstruct the dialogue. Provide a concise, well-structured summary of who said what, key points, and action items. Context of the meeting: \(context.rawValue)."
-            
-            // Llama 3 Instruct Format
+            let container = try await ensureModelLoaded()
+
+            loadingProgress = String(localized: "Generating summary...")
+
+            let systemPrompt = """
+                You are an expert AI meeting summarizer. \
+                The transcript lacks speaker tags. Try to deduce different speakers from the context \
+                (e.g. Speaker A, Speaker B) and reconstruct the dialogue. \
+                Provide a concise, well-structured summary of who said what, key points, and action items. \
+                Context of the meeting: \(context.rawValue).
+                """
+
             let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
-            
-            // Generate tokens
+
             let _ = try await container.perform { model, tokenizer in
                 let promptTokens = try tokenizer.encode(text: fullPrompt)
-                
+
                 let _ = try MLXLMCommon.generate(
                     promptTokens: promptTokens,
                     parameters: GenerateParameters(temperature: 0.6),
@@ -146,7 +190,6 @@ class LLMService: ObservableObject {
                     tokenizer: tokenizer,
                     extraEOSTokens: Set<String>(),
                     didGenerate: { tokens in
-                        // Decode incrementally
                         if let newText = tokenizer.decode(tokenIds: tokens) {
                             Task { @MainActor in
                                 self.summaryText = newText
@@ -156,76 +199,49 @@ class LLMService: ObservableObject {
                     }
                 )
             }
-            
+
         } catch {
-            await MainActor.run {
-                let formatString = String(localized: "MLX Error: %@")
-                self.summaryText = String(format: formatString, error.localizedDescription)
-            }
+            let formatString = String(localized: "MLX Error: %@")
+            summaryText = String(format: formatString, error.localizedDescription)
         }
-        
-        await MainActor.run {
-            self.isProcessing = false
-            self.loadingProgress = ""
-        }
+
+        isProcessing = false
+        loadingProgress = ""
     }
-    
+
+    // MARK: - Public API: Speaker Diarization
+
     func formatTranscriptWithSpeakers(text: String) async -> String {
         guard !text.isEmpty else { return "" }
-        
-        await MainActor.run {
-            self.isProcessing = true
-            self.loadingProgress = String(localized: "Identifying speakers...")
-        }
-        
+
+        isProcessing = true
+        loadingProgress = String(localized: "Identifying speakers...")
+
         do {
-            if modelContainer == nil {
-                modelContainer = try await LLMModelFactory.shared.loadContainer(
-                    from: HubBridge(HubClient()),
-                    using: TransformersLoader(),
-                    configuration: modelConfiguration
-                ) { _ in }
-            }
-            
-            guard let container = modelContainer else {
-                throw NSError(domain: "LLMService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model container not initialized"])
-            }
-            
-            let systemPrompt = "You are a transcription formatting assistant. Rewrite the following raw audio transcription by assigning Speaker tags (e.g., Speaker A, Speaker B) based on conversational context, turn-taking, and tone. DO NOT summarize the text. DO NOT omit any spoken words. Preserve the original dialogue exactly as spoken, but add speaker labels at the beginning of each conversational turn. Output ONLY the formatted transcript."
-            let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
-            
-            var formattedText = ""
-            
-            let _ = try await container.perform { model, tokenizer in
-                let promptTokens = try tokenizer.encode(text: fullPrompt)
-                let _ = try MLXLMCommon.generate(
-                    promptTokens: promptTokens,
-                    parameters: GenerateParameters(temperature: 0.1),
-                    model: model,
-                    tokenizer: tokenizer,
-                    extraEOSTokens: Set<String>(),
-                    didGenerate: { tokens in
-                        if let newText = tokenizer.decode(tokenIds: tokens) {
-                            formattedText = newText
-                        }
-                        return .more
-                    }
-                )
-            }
-            
-            await MainActor.run {
-                self.isProcessing = false
-                self.loadingProgress = ""
-            }
-            
-            return formattedText
-            
+            let systemPrompt = """
+                You are a transcription formatting assistant. \
+                Rewrite the following raw audio transcription by assigning Speaker tags \
+                (e.g., Speaker A, Speaker B) based on conversational context, turn-taking, and tone. \
+                DO NOT summarize the text. DO NOT omit any spoken words. \
+                Preserve the original dialogue exactly as spoken, but add speaker labels \
+                at the beginning of each conversational turn. \
+                Output ONLY the formatted transcript.
+                """
+
+            let result = try await generate(
+                systemPrompt: systemPrompt,
+                userContent: "Transcript:\n\(text)",
+                temperature: 0.1
+            )
+
+            isProcessing = false
+            loadingProgress = ""
+            return result.isEmpty ? text : result
+
         } catch {
-            await MainActor.run {
-                self.isProcessing = false
-                self.loadingProgress = ""
-            }
-            return text
+            isProcessing = false
+            loadingProgress = ""
+            return text  // Fallback to raw transcript on error
         }
     }
 }

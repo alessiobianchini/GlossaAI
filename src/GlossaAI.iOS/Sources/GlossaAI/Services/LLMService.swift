@@ -46,7 +46,7 @@ class LLMService: ObservableObject {
             }
             
             // Format prompt
-            let systemPrompt = "You are an expert AI meeting summarizer. Provide a concise, well-structured summary of the transcript. Context of the meeting: \(context.rawValue)."
+            let systemPrompt = "You are an expert AI meeting summarizer. The transcript lacks speaker tags. Try to deduce different speakers from the context (e.g. Speaker A, Speaker B) and reconstruct the dialogue. Provide a concise, well-structured summary of who said what, key points, and action items. Context of the meeting: \(context.rawValue)."
             
             // Llama 3 Instruct Format
             let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"

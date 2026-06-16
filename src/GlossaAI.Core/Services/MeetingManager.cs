@@ -51,12 +51,14 @@ public class MeetingManager(
             return $"""
                 You are an expert executive secretary and software architect assistant.
                 Analyze the meeting transcription below and generate a professional, structured recap in {_settings.OutLangName}.{contextPart}
+                Since the raw transcription lacks speaker tags, try to reconstruct the dialogue by inferring different speakers based on context and conversational turn-taking (e.g. Speaker A, Speaker B).
 
                 The recap MUST include:
                 1. **Executive Summary**: A brief paragraph summarizing the main topic and goals.
-                2. **Key Discussion Points**: Bullet points detailing the topics explored.
-                3. **Decisions Made**: A list of agreed-upon items.
-                4. **Action Items**: Clear tasks assigned to owners (if mentioned) with deadlines.
+                2. **Dialogue Reconstruction**: A brief summary of who said what, guessing the speakers from the flow of conversation.
+                3. **Key Discussion Points**: Bullet points detailing the topics explored.
+                4. **Decisions Made**: A list of agreed-upon items.
+                5. **Action Items**: Clear tasks assigned to owners (if mentioned) with deadlines.
 
                 Format the output clearly using clean Markdown.
                 """;

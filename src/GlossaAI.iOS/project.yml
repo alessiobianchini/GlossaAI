@@ -7,7 +7,10 @@ options:
 packages:
   MLXSwiftLM:
     url: https://github.com/ml-explore/mlx-swift-lm
-    from: "0.12.1"
+    from: "3.0.0"
+  SwiftTransformers:
+    url: https://github.com/huggingface/swift-transformers
+    from: "0.1.24"
 targets:
   GlossaAI:
     type: application
@@ -41,3 +44,7 @@ targets:
         product: MLXLMCommon
       - package: MLXSwiftLM
         product: MLXRandom
+      - package: SwiftTransformers
+        product: HuggingFace
+      - package: SwiftTransformers
+        product: Tokenizers

@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import Speech
 
+@MainActor
 class SpeechRecognizer: ObservableObject {
     @Published var transcribedText = ""
     @Published var isRecording = false

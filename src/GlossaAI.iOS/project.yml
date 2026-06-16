@@ -37,3 +37,5 @@ targets:
     dependencies:
       - package: MLXSwiftLM
         product: MLXLLM
+      - package: MLXSwiftLM
+        product: MLXHuggingFace

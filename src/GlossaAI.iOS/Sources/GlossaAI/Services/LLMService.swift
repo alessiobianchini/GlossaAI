@@ -3,6 +3,7 @@ import SwiftUI
 import MLX
 import MLXLLM
 import MLXLMCommon
+import MLXHuggingFace
 
 class LLMService: ObservableObject {
     @Published var summaryText = ""
@@ -54,21 +55,22 @@ class LLMService: ObservableObject {
             let _ = try await container.perform { model, tokenizer in
                 let promptTokens = try tokenizer.encode(text: fullPrompt)
                 
-                let _ = try MLXLLM.generate(
+                let _ = try MLXLMCommon.generate(
                     promptTokens: promptTokens,
                     parameters: GenerateParameters(temperature: 0.6),
                     model: model,
                     tokenizer: tokenizer,
-                    extraTokens: Set()
-                ) { tokens in
-                    // Decode incrementally
-                    if let newText = tokenizer.decode(tokens: tokens) {
-                        Task { @MainActor in
-                            self.summaryText = newText
+                    extraEOSTokens: Set<String>(),
+                    didGenerate: { tokens in
+                        // Decode incrementally
+                        if let newText = tokenizer.decode(tokenIds: tokens) {
+                            Task { @MainActor in
+                                self.summaryText = newText
+                            }
                         }
+                        return .more
                     }
-                    return .more
-                }
+                )
             }
             
         } catch {

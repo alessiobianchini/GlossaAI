@@ -3,7 +3,6 @@ import SwiftUI
 import MLX
 import MLXLLM
 import MLXLMCommon
-import MLXRandom
 
 class LLMService: ObservableObject {
     @Published var summaryText = ""

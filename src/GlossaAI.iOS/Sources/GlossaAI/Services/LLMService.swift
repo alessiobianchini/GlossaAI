@@ -2,14 +2,19 @@ import Foundation
 import SwiftUI
 import MLX
 import MLXLLM
+import MLXLMCommon
+import MLXRandom
 
 class LLMService: ObservableObject {
     @Published var summaryText = ""
     @Published var isProcessing = false
     @Published var loadingProgress: String = ""
     
-    // Variabili di stato per mantenere in memoria il modello
-    // private var modelContext: ModelContext?
+    // MLX 3.0 Model Container
+    private var modelContainer: ModelContainer?
+    
+    // We choose Llama-3.2-1B-Instruct-4bit as it's lightweight for iOS
+    private let modelConfiguration = ModelConfiguration(id: "mlx-community/Llama-3.2-1B-Instruct-4bit")
     
     func generateSummary(text: String, context: MeetingContext) async {
         guard !text.isEmpty else { return }
@@ -21,24 +26,43 @@ class LLMService: ObservableObject {
         }
         
         do {
-            // MLX 3.0 richiede nuovi import e configurazioni (MLXHuggingFace, Tokenizers, ecc.)
-            // Per ora simuliamo la generazione per sbloccare la pipeline e il rilascio su TestFlight.
-            DispatchQueue.main.async {
-                self.loadingProgress = String(localized: "Loading model...")
+            // Load container only once
+            if modelContainer == nil {
+                modelContainer = try await LLMModelFactory.shared.loadContainer(configuration: modelConfiguration) { progress in
+                    // We could update progress here if we wanted
+                }
             }
-            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 secondi di attesa
+            
+            guard let container = modelContainer else {
+                throw NSError(domain: "LLMService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model container not initialized"])
+            }
             
             DispatchQueue.main.async {
                 self.loadingProgress = String(localized: "Generating summary...")
             }
-            try await Task.sleep(nanoseconds: 2_000_000_000)
             
-            let dummySummary = "Questo è un riassunto generato localmente simulato per il contesto: \(context.rawValue).\n\nL'integrazione completa con MLXSwift 3.x verrà implementata nel prossimo aggiornamento."
+            // Format prompt
+            let systemPrompt = "You are an expert AI meeting summarizer. Provide a concise, well-structured summary of the transcript. Context of the meeting: \(context.rawValue)."
             
-            for word in dummySummary.split(separator: " ") {
-                try await Task.sleep(nanoseconds: 100_000_000)
-                DispatchQueue.main.async {
-                    self.summaryText += word + " "
+            // Llama 3 Instruct Format
+            let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+            
+            // Generate tokens
+            let _ = try await container.perform { context in
+                let promptTokens = try context.tokenizer.encode(text: fullPrompt)
+                
+                let _ = try MLXLLM.generate(
+                    promptTokens: promptTokens,
+                    parameters: GenerateParameters(temperature: 0.6),
+                    context: context
+                ) { tokens in
+                    // Decode incrementally
+                    if let newText = context.tokenizer.decode(tokens: tokens) {
+                        DispatchQueue.main.async {
+                            self.summaryText = newText
+                        }
+                    }
+                    return .more
                 }
             }
             

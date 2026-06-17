@@ -59,7 +59,6 @@ final class TokenizerBridge: MLXLMCommon.Tokenizer, @unchecked Sendable {
         tools: [[String: any Sendable]]?,
         additionalContext: [String: any Sendable]?
     ) throws -> [Int] {
-        // Convert Sendable dicts to [String: Any] expected by swift-transformers
         let anyMessages = messages.map { $0 as [String: Any] }
         let anyTools = tools?.map { $0 as [String: Any] }
         do {
@@ -80,6 +79,11 @@ struct AutoTokenizerLoader: MLXLMCommon.TokenizerLoader {
         let upstream = try await Tokenizers.AutoTokenizer.from(modelFolder: directory)
         return TokenizerBridge(upstream)
     }
+}
+
+// MARK: - Output Accumulator for Sendable closures
+final class OutputAccumulator: @unchecked Sendable {
+    var text: String = ""
 }
 
 // MARK: - LLM Service
@@ -123,7 +127,7 @@ class LLMService: ObservableObject {
             ["role": "user", "content": userContent]
         ]
 
-        var output = ""
+        let accumulator = OutputAccumulator()
 
         try await container.perform { (context: ModelContext) in
             let promptTokens = try context.tokenizer.applyChatTemplate(
@@ -138,13 +142,13 @@ class LLMService: ObservableObject {
                 parameters: GenerateParameters(temperature: temperature),
                 context: context
             ) { newTokens in
-                output += context.tokenizer.decode(tokenIds: newTokens)
+                accumulator.text += context.tokenizer.decode(tokenIds: newTokens)
                 return .more
             }
             MLX.eval(result.output)
         }
 
-        return output
+        return accumulator.text
     }
 
     // MARK: - Public API: Summary

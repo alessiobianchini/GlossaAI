@@ -8,11 +8,8 @@ import Tokenizers
 
 // MARK: - MLXLMCommon Protocol Bridges
 
-/// Bridges HuggingFace Hub's download API to MLXLMCommon.Downloader protocol.
-/// This avoids depending on MLXHuggingFace (which requires Swift Macro compilation
-/// and breaks XcodeGen-based CI builds).
+/// Bridges swift-huggingface's HubClient to MLXLMCommon.Downloader.
 struct HubDownloaderBridge: MLXLMCommon.Downloader {
-
     func download(
         id: String,
         revision: String?,
@@ -23,15 +20,14 @@ struct HubDownloaderBridge: MLXLMCommon.Downloader {
         return try await HubClient.default.downloadSnapshot(
             of: id,
             revision: revision,
-            matching: patterns
-        ) { progress in
-            progressHandler(progress)
-        }
+            matching: patterns,
+            progressHandler: progressHandler
+        )
     }
 }
 
-/// Bridges swift-transformers' Tokenizer to MLXLMCommon.Tokenizer protocol.
-struct TokenizerBridge: MLXLMCommon.Tokenizer {
+/// Bridges swift-transformers' Tokenizer to MLXLMCommon.Tokenizer.
+final class TokenizerBridge: MLXLMCommon.Tokenizer, @unchecked Sendable {
     private let upstream: any Tokenizers.Tokenizer
 
     init(_ upstream: any Tokenizers.Tokenizer) {
@@ -63,19 +59,22 @@ struct TokenizerBridge: MLXLMCommon.Tokenizer {
         tools: [[String: any Sendable]]?,
         additionalContext: [String: any Sendable]?
     ) throws -> [Int] {
+        // Convert Sendable dicts to [String: Any] expected by swift-transformers
+        let anyMessages = messages.map { $0 as [String: Any] }
+        let anyTools = tools?.map { $0 as [String: Any] }
         do {
             return try upstream.applyChatTemplate(
-                messages: messages, tools: tools, additionalContext: additionalContext)
+                messages: anyMessages,
+                tools: anyTools,
+                additionalContext: additionalContext as? [String: Any]
+            )
         } catch Tokenizers.TokenizerError.missingChatTemplate {
             throw MLXLMCommon.TokenizerError.missingChatTemplate
-        } catch {
-            throw error
         }
     }
 }
 
-/// Loads a tokenizer from a local directory using swift-transformers' AutoTokenizer,
-/// then wraps it in our TokenizerBridge.
+/// Loads a tokenizer from a local directory and wraps it in TokenizerBridge.
 struct AutoTokenizerLoader: MLXLMCommon.TokenizerLoader {
     func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
         let upstream = try await Tokenizers.AutoTokenizer.from(modelFolder: directory)
@@ -93,8 +92,6 @@ class LLMService: ObservableObject {
 
     private var modelContainer: ModelContainer?
     private let modelConfiguration = ModelConfiguration(id: "mlx-community/Llama-3.2-1B-Instruct-4bit")
-
-    // Shared bridges (created once, reused across calls)
     private let downloader = HubDownloaderBridge()
     private let tokenizerLoader = AutoTokenizerLoader()
 
@@ -102,70 +99,64 @@ class LLMService: ObservableObject {
 
     private func ensureModelLoaded() async throws -> ModelContainer {
         if let container = modelContainer { return container }
-
         loadingProgress = String(localized: "Loading model...")
-
         let container = try await LLMModelFactory.shared.loadContainer(
             from: downloader,
             using: tokenizerLoader,
             configuration: modelConfiguration
-        ) { progress in
-            // Progress callback for model download
-        }
-
+        ) { _ in }
         modelContainer = container
         return container
     }
 
-    // MARK: - Text Generation (Core)
+    // MARK: - Text Generation
 
-    private func generate(systemPrompt: String, userContent: String, temperature: Float = 0.6) async throws -> String {
+    private func generate(
+        systemPrompt: String,
+        userContent: String,
+        temperature: Float = 0.6
+    ) async throws -> String {
         let container = try await ensureModelLoaded()
 
-        let fullPrompt = """
-            <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+        let messages: [[String: String]] = [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user", "content": userContent]
+        ]
 
-            \(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>
+        var output = ""
 
-            \(userContent)<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-
-            """
-
-        var generatedText = ""
-
-        let _ = try await container.perform { model, tokenizer in
-            let promptTokens = try tokenizer.encode(text: fullPrompt)
-
-            let _ = try MLXLMCommon.generate(
-                promptTokens: promptTokens,
-                parameters: GenerateParameters(temperature: temperature),
-                model: model,
-                tokenizer: tokenizer,
-                extraEOSTokens: Set<String>(),
-                didGenerate: { tokens in
-                    if let newText = tokenizer.decode(tokenIds: tokens) {
-                        generatedText = newText
-                    }
-                    return .more
-                }
+        try await container.perform { (context: ModelContext) in
+            let promptTokens = try context.tokenizer.applyChatTemplate(
+                messages: messages,
+                tools: nil,
+                additionalContext: nil
             )
+
+            let input = LMInput(tokens: MLXArray(promptTokens))
+            let result = try MLXLMCommon.generate(
+                input: input,
+                parameters: GenerateParameters(temperature: temperature),
+                context: context
+            ) { newTokens in
+                output += context.tokenizer.decode(tokenIds: newTokens)
+                return .more
+            }
+            MLX.eval(result.output)
         }
 
-        return generatedText
+        return output
     }
 
     // MARK: - Public API: Summary
 
     func generateSummary(text: String, context: MeetingContext) async {
         guard !text.isEmpty else { return }
-
         isProcessing = true
         summaryText = ""
         loadingProgress = String(localized: "Loading model...")
 
         do {
-            let container = try await ensureModelLoaded()
-
+            _ = try await ensureModelLoaded()
             loadingProgress = String(localized: "Generating summary...")
 
             let systemPrompt = """
@@ -176,31 +167,12 @@ class LLMService: ObservableObject {
                 Context of the meeting: \(context.rawValue).
                 """
 
-            let fullPrompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n\(systemPrompt)<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nTranscript:\n\(text)<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
-
-            let _ = try await container.perform { model, tokenizer in
-                let promptTokens = try tokenizer.encode(text: fullPrompt)
-
-                let _ = try MLXLMCommon.generate(
-                    promptTokens: promptTokens,
-                    parameters: GenerateParameters(temperature: 0.6),
-                    model: model,
-                    tokenizer: tokenizer,
-                    extraEOSTokens: Set<String>(),
-                    didGenerate: { tokens in
-                        if let newText = tokenizer.decode(tokenIds: tokens) {
-                            Task { @MainActor in
-                                self.summaryText = newText
-                            }
-                        }
-                        return .more
-                    }
-                )
-            }
-
+            summaryText = try await generate(
+                systemPrompt: systemPrompt,
+                userContent: "Transcript:\n\(text)"
+            )
         } catch {
-            let formatString = String(localized: "MLX Error: %@")
-            summaryText = String(format: formatString, error.localizedDescription)
+            summaryText = String(format: String(localized: "MLX Error: %@"), error.localizedDescription)
         }
 
         isProcessing = false
@@ -211,7 +183,6 @@ class LLMService: ObservableObject {
 
     func formatTranscriptWithSpeakers(text: String) async -> String {
         guard !text.isEmpty else { return "" }
-
         isProcessing = true
         loadingProgress = String(localized: "Identifying speakers...")
 
@@ -231,15 +202,13 @@ class LLMService: ObservableObject {
                 userContent: "Transcript:\n\(text)",
                 temperature: 0.1
             )
-
             isProcessing = false
             loadingProgress = ""
             return result.isEmpty ? text : result
-
         } catch {
             isProcessing = false
             loadingProgress = ""
-            return text  // Fallback to raw transcript on error
+            return text
         }
     }
 }

@@ -1,0 +1,15 @@
+# System Prompt / Project Summary
+You are an expert AI assistant navigating a cross-platform desktop application codebase. The project is an audio coordination tool that captures, transcribes, and summarizes meetings using local LLMs and STT models. Your goal is to provide robust, cross-platform solutions adhering to the .NET ecosystem best practices.
+
+# Architecture & Infrastructure
+- **Core Framework:** .NET 10 (C#)
+- **UI Framework:** Avalonia UI with MVVM (CommunityToolkit.Mvvm)
+- **Local AI:** Whisper.net (Speech-to-Text), Ollama (Local Model Hosting)
+- **Media Processing:** WASAPI for audio capture, FFmpeg for media manipulation
+- **CI/CD:** GitHub Actions building cross-platform installers (Inno Setup for Windows, DMG for macOS, Tarball for Linux)
+
+# Coding Guidelines
+- **Architecture:** Maintain strict separation of concerns across `GlossaAI.Core`, `GlossaAI.Infrastructure`, and `GlossaAI.Desktop`.
+- **UI/UX:** Use strict MVVM patterns. Code-behind should be minimal. Bindings must be type-safe where possible.
+- **Asynchronous Code:** Prevent UI thread blocking. All I/O, audio processing, and LLM API calls must be fully asynchronous (`async`/`await`).
+- **Platform Agnosticism:** Avoid platform-specific APIs in Core/Desktop layers. Use dependency injection to provide platform implementations via the Infrastructure layer.

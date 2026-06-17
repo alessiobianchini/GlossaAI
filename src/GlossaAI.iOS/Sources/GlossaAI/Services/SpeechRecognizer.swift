@@ -114,6 +114,12 @@ class SpeechRecognizer: ObservableObject {
         }
     }
     
+    func reset() {
+        DispatchQueue.main.async {
+            self.transcribedText = ""
+        }
+    }
+    
     // File transcription
     func transcribeFile(url: URL) async {
         DispatchQueue.main.async {

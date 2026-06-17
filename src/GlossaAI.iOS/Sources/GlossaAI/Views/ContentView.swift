@@ -231,8 +231,21 @@ struct ContentView: View {
                             .disabled(speechRecognizer.isTranscribingFile)
                         }
                         
-                        // Summarize & Diarize Buttons
+                        // Action Buttons (Reset, Summarize, Format)
                         if !speechRecognizer.isRecording && !speechRecognizer.transcribedText.isEmpty {
+                            // Reset Button
+                            Button(action: resetState) {
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.red.opacity(0.8))
+                                    .clipShape(Circle())
+                                    .shadow(color: Color.red.opacity(0.5), radius: 8, x: 0, y: 4)
+                            }
+                            .disabled(llmService.isProcessing || speechRecognizer.isTranscribingFile)
+                            
+                            // Summarize & Diarize Buttons
                             VStack(spacing: 8) {
                                 if !llmService.loadingProgress.isEmpty {
                                     Text(llmService.loadingProgress)
@@ -354,6 +367,14 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+    }
+    
+    private func resetState() {
+        withAnimation(.spring()) {
+            speechRecognizer.reset()
+            llmService.summaryText = ""
+            llmService.loadingProgress = ""
         }
     }
 }

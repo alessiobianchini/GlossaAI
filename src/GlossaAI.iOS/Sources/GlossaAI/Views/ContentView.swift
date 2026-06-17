@@ -337,7 +337,7 @@ struct ContentView: View {
     }
     
     private func generateSummary() {
-        withAnimation(.spring()) {
+        _ = withAnimation(.spring()) {
             Task {
                 await llmService.generateSummary(text: speechRecognizer.transcribedText, context: selectedContext)
             }
@@ -345,7 +345,7 @@ struct ContentView: View {
     }
     
     private func formatSpeakers() {
-        withAnimation(.spring()) {
+        _ = withAnimation(.spring()) {
             Task {
                 let formatted = await llmService.formatTranscriptWithSpeakers(text: speechRecognizer.transcribedText)
                 if !formatted.isEmpty {

@@ -17,9 +17,17 @@ struct HubDownloaderBridge: MLXLMCommon.Downloader {
         useLatest: Bool,
         progressHandler: @Sendable @escaping (Foundation.Progress) -> Void
     ) async throws -> URL {
+        let parts = id.split(separator: "/", maxSplits: 1)
+        let repoId: Repo.ID
+        if parts.count == 2 {
+            repoId = Repo.ID(namespace: String(parts[0]), name: String(parts[1]))
+        } else {
+            repoId = Repo.ID(namespace: "mlx-community", name: id)
+        }
+        
         return try await HubClient.default.downloadSnapshot(
-            of: id,
-            revision: revision,
+            of: repoId,
+            revision: revision ?? "main",
             matching: patterns,
             progressHandler: progressHandler
         )
@@ -65,7 +73,7 @@ final class TokenizerBridge: MLXLMCommon.Tokenizer, @unchecked Sendable {
             return try upstream.applyChatTemplate(
                 messages: anyMessages,
                 tools: anyTools,
-                additionalContext: additionalContext as? [String: Any]
+                additionalContext: additionalContext
             )
         } catch Tokenizers.TokenizerError.missingChatTemplate {
             throw MLXLMCommon.TokenizerError.missingChatTemplate
